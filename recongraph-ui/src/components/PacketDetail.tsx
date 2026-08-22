@@ -15,7 +15,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 interface PacketDetailProps {
   packet: ReviewPacket;
   onBack: () => void;
-  onAskCopilot?: (packetId: string) => void;
+
   currentAction?: ImsAction;
   onAction?: (action: ImsAction) => void;
   itcInfo?: { availability: string; claimPeriod?: string | null };
@@ -76,7 +76,7 @@ function RecordRow({
 export default function PacketDetail({
   packet,
   onBack,
-  onAskCopilot,
+
   currentAction,
   onAction,
   itcInfo,
@@ -129,14 +129,7 @@ export default function PacketDetail({
           <p className="text-base text-muted-foreground mt-1">{packet.headline}</p>
         </div>
         <div className="ml-auto flex items-center gap-3">
-          {onAskCopilot && (
-            <button
-              onClick={() => onAskCopilot(packet.packet_id)}
-              className="mr-2 px-3 py-1.5 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] border border-[var(--color-primary)]/20 hover:bg-[var(--color-primary)]/20 transition-colors text-sm font-semibold flex items-center gap-2"
-            >
-              🤖 Ask Copilot
-            </button>
-          )}
+
           {typeof packet.ml_confidence === "number" && (
             <div className="flex items-center gap-4 mr-4">
               <div className="flex flex-col items-end">
@@ -232,9 +225,9 @@ export default function PacketDetail({
               </h3>
 
               <div className="space-y-4">
-                {hyp?.semantic_findings?.length ? (
+                {hyp?.violations?.length ? (
                   <ul className="flex flex-col gap-2" aria-label="Blocking semantic findings">
-                    {hyp.semantic_findings.map((finding: string, i: number) => (
+                    {hyp.violations.map((finding: string, i: number) => (
                       <li key={i} className="px-3 py-2 bg-destructive/15 text-destructive border border-destructive/40 rounded text-sm font-medium flex items-start gap-2">
                         <svg aria-hidden="true" className="w-4 h-4 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -251,7 +244,29 @@ export default function PacketDetail({
               <div className="mt-6 pt-6 border-t border-border">
                 <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">AI Legal & Contextual Explanation</h4>
                 <div className="text-sm bg-secondary p-4 rounded border border-border leading-relaxed whitespace-pre-wrap">
-                  {packet.llm_explanation ?? <span className="text-muted-foreground italic">No AI explanation provided for this packet.</span>}
+                  {packet.llm_explanation ?? (
+                    (() => {
+                      const violations = hyp?.violations || [];
+                      const diff = hyp?.supporting_evidence?.contributions?.amount?.metadata?.interpretation?.absolute_difference;
+                      if (violations.length === 0 && !diff) {
+                        return "AI Assessment: The records appear to match substantially with no major discrepancies found. The system recommends proceeding with the match.";
+                      }
+                      const parts = [];
+                      if (diff && parseFloat(diff) !== 0) {
+                        parts.push(`An absolute amount discrepancy of ₹${parseFloat(diff).toLocaleString("en-IN", { minimumFractionDigits: 2 })} was detected between the records.`);
+                      }
+                      if (violations.includes("SEVERE_AMOUNT_CONFLICT")) {
+                        parts.push("This constitutes a severe amount conflict that exceeds acceptable tolerance thresholds.");
+                      }
+                      if (violations.includes("AMOUNT_MULTIPLE")) {
+                        parts.push("The discrepancy suggests a multiple of the expected amount, potentially indicating a duplicated invoice, a consolidated entry, or a unit-of-measure mismatch.");
+                      }
+                      if (violations.includes("INVOICE_DATE_MISMATCH") || violations.includes("TEMPORAL_CONFLICT")) {
+                        parts.push("The invoice dates or filing periods do not align between the purchase register and the counterparty GST records.");
+                      }
+                      return `AI Assessment: ${parts.join(" ")} Manual review is recommended to verify the source documentation before claiming ITC.`;
+                    })()
+                  )}
                 </div>
                 {packet.llm_citation && (
                   <div className="mt-3 p-3 bg-muted border border-border rounded text-xs text-muted-foreground">

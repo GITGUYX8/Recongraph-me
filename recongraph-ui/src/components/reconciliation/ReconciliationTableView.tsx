@@ -284,8 +284,8 @@ export default function ReconciliationTableView({
                 <th scope="col" colSpan={4} className={`text-center border-b border-border bg-info/15 text-info`}>
                   GSTR-2B
                 </th>
-                <th scope="col" colSpan={2} className={`text-center border-b border-border bg-destructive/10 text-destructive`}>
-                  Differences
+                <th scope="col" colSpan={3} className={`text-center border-b border-border bg-destructive/10 text-destructive`}>
+                  Differences & Risk
                 </th>
               </tr>
               <tr className="bg-secondary text-muted-foreground">
@@ -298,13 +298,14 @@ export default function ReconciliationTableView({
                 <th scope="col" className={thBase}>GSTIN</th>
                 <th scope="col" className={`${thBase} text-right`}>Amount</th>
                 <th scope="col" className={`${thBase} text-right`}>Δ Amount (₹)</th>
-                <th scope="col" className={`${thBase} text-center last:pr-4`}>Flags</th>
+                <th scope="col" className={`${thBase} text-center`}>Flags</th>
+                <th scope="col" className={`${thBase} text-center last:pr-4`}>Priority</th>
               </tr>
             </thead>
             <tbody>
               {invoiceRows.map((row, i) => {
                 const meta = ACTION_META[row.packet.action];
-                const findings = row.packet.competitors?.[0]?.semantic_findings ?? [];
+                const findings = row.packet.competitors?.[0]?.violations ?? [];
                 const cellSide = (side: "purchase" | "gst") =>
                   side === "purchase"
                     ? "bg-success/8 border-l border-success/20"
@@ -375,12 +376,21 @@ export default function ReconciliationTableView({
                         <span className="text-muted-foreground">—</span>
                       )}
                     </td>
+                    <td className="px-3 py-2.5 text-center pr-4">
+                      {row.packet.risk_profile ? (
+                        <Badge variant={row.packet.risk_profile.priority === "HIGH" ? "danger" : row.packet.risk_profile.priority === "MEDIUM" ? "warning" : "success"} className="text-[10px]">
+                          {row.packet.risk_profile.priority}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
               {invoiceRows.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-4 py-10 text-center text-muted-foreground">
+                  <td colSpan={12} className="px-4 py-10 text-center text-muted-foreground">
                     No invoices match the current filters.
                   </td>
                 </tr>

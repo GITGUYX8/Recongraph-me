@@ -3,8 +3,8 @@ from typing import Any, TYPE_CHECKING
 from recongraph.domain.records import PurchaseRecord, GSTRecord
 from recongraph.graph.decision import DecisionAction, ReconciliationDecision
 from recongraph.graph.fusion_explainability import ExplanationArtifact
-from recongraph.graph.candidate import CandidateGraph
 from recongraph.graph.hypotheses import EvaluatedHypothesis
+from recongraph.graph.risk import RiskProfile, RiskEngine
 
 if TYPE_CHECKING:
     from recongraph.domain.document.layout import BoundingBox
@@ -43,6 +43,7 @@ class ReviewPacket:
     llm_explanation: str | None = None
     llm_citation: str | None = None
     ai_provenance: dict | None = None
+    risk_profile: RiskProfile | None = None
 
 
 from recongraph.domain.reliability.dimensions import ExtractionQuality
@@ -179,6 +180,13 @@ class ReviewPacketBuilder:
         curated_competitors = decision.competitors[:3]
         headline = self._generate_headline(decision.action, purchases, gsts, curated_competitors)
 
+        risk_profile = RiskEngine.assess(
+            purchases=tuple(purchases),
+            gsts=tuple(gsts),
+            competitors=curated_competitors,
+            ml_confidence=ml_confidence
+        )
+
         return ReviewPacket(
             packet_id=packet_id,
             action=decision.action,
@@ -193,7 +201,8 @@ class ReviewPacketBuilder:
             ml_confidence=ml_confidence,
             llm_explanation=llm_explanation,
             llm_citation=llm_citation,
-            ai_provenance=ai_provenance
+            ai_provenance=ai_provenance,
+            risk_profile=risk_profile
         )
 
     def build_single_leftover(self, urn: str, graph: CandidateGraph) -> ReviewPacket | None:
@@ -212,6 +221,13 @@ class ReviewPacketBuilder:
             return None
 
         headline = self._generate_headline(DecisionAction.NO_MATCH, purchases, gsts, ())
+        risk_profile = RiskEngine.assess(
+            purchases=tuple(purchases),
+            gsts=tuple(gsts),
+            competitors=(),
+            ml_confidence=None
+        )
+
         return ReviewPacket(
             packet_id=packet_id,
             action=DecisionAction.NO_MATCH,
@@ -225,4 +241,5 @@ class ReviewPacketBuilder:
             ocr_warnings=(),
             ml_confidence=None,
             llm_explanation=None,
+            risk_profile=risk_profile
         )

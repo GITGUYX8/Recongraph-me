@@ -1016,7 +1016,19 @@
       ],
       "headline": "Weak evidence: INV-1042 \u2194 AB/1042 \u2014 score 0.63 below threshold",
       "highlight_regions": [],
-      "ocr_warnings": []
+      "ocr_warnings": [],
+      "risk_profile": {
+        "priority": "HIGH",
+        "score": 100,
+        "reasons": [
+          "Severe amount difference (\u20b9118,000.00)",
+          "Uncertain match confidence",
+          "Severe amount conflict",
+          "Possible duplicate or consolidated invoice (Multiple of amount)",
+          "GSTIN mismatch (07ABCDE1234F1Z5 vs 27ZZZZZ9999Z9Z9)"
+        ],
+        "financial_impact": 118000.0
+      }
     },
     {
       "packet_id": "RP-00002",
@@ -1049,7 +1061,15 @@
       ],
       "headline": "No match: GST AB/1042 \u2014 no candidate purchase record found",
       "highlight_regions": [],
-      "ocr_warnings": []
+      "ocr_warnings": [],
+      "risk_profile": {
+        "priority": "LOW",
+        "score": 20,
+        "reasons": [
+          "Uncertain match confidence"
+        ],
+        "financial_impact": 0.0
+      }
     },
     {
       "packet_id": "RP-00003",
@@ -1082,7 +1102,15 @@
       ],
       "headline": "No match: GST CL-JUL-2026 \u2014 no candidate purchase record found",
       "highlight_regions": [],
-      "ocr_warnings": []
+      "ocr_warnings": [],
+      "risk_profile": {
+        "priority": "LOW",
+        "score": 20,
+        "reasons": [
+          "Uncertain match confidence"
+        ],
+        "financial_impact": 0.0
+      }
     },
     {
       "packet_id": "RP-00004",
@@ -1115,7 +1143,15 @@
       ],
       "headline": "No match: purchase CL-JUN-2026 \u2014 no candidate GST record found",
       "highlight_regions": [],
-      "ocr_warnings": []
+      "ocr_warnings": [],
+      "risk_profile": {
+        "priority": "LOW",
+        "score": 20,
+        "reasons": [
+          "Uncertain match confidence"
+        ],
+        "financial_impact": 0.0
+      }
     },
     {
       "packet_id": "RP-00005",
@@ -1189,7 +1225,16 @@
       ],
       "headline": "Weak evidence: OMD-001 \u2194 NSS-001 \u2014 score 0.00 below threshold",
       "highlight_regions": [],
-      "ocr_warnings": []
+      "ocr_warnings": [],
+      "risk_profile": {
+        "priority": "MEDIUM",
+        "score": 50,
+        "reasons": [
+          "Uncertain match confidence",
+          "GSTIN mismatch (07ORION5678B1Z2 vs 29NOVAS9876D1Z4)"
+        ],
+        "financial_impact": 0.0
+      }
     },
     {
       "packet_id": "RP-00006",
@@ -2566,7 +2611,18 @@
       ],
       "headline": "Weak evidence: AIS-9001 \u2194 AIS/9001-B, AIS/9001-A \u2014 score 0.67 below threshold",
       "highlight_regions": [],
-      "ocr_warnings": []
+      "ocr_warnings": [],
+      "risk_profile": {
+        "priority": "HIGH",
+        "score": 100,
+        "reasons": [
+          "Significant amount difference (\u20b950,000.00)",
+          "Uncertain match confidence",
+          "Severe amount conflict",
+          "Possible duplicate or consolidated invoice (Multiple of amount)"
+        ],
+        "financial_impact": 50000.0
+      }
     }
   ],
   "traces": [

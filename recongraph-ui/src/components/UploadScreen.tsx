@@ -12,9 +12,8 @@ interface UploadScreenProps {
 export default function UploadScreen({ onDemoLoad, isLoading }: UploadScreenProps) {
   return (
     <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-8 items-center mt-10 animate-in fade-in duration-300 min-h-[70vh]">
-      {/* Left: Background image with overlay and content */}
+      {/* Left: Background with overlay and content */}
       <div className="relative lg:col-span-1">
-        <div className="absolute inset-0 bg-[url('/images/hero-dashboard.jpg')] bg-cover bg-center" aria-hidden="true" />
         <div className="absolute inset-0 bg-gradient-to-br from-background/90 via-background/70 to-background/50" aria-hidden="true" />
         <div className="relative p-8 lg:p-12 h-full flex flex-col justify-center">
           <h2 className="text-4xl lg:text-5xl font-bold tracking-tight text-foreground text-balance mb-6">
@@ -58,27 +57,31 @@ export default function UploadScreen({ onDemoLoad, isLoading }: UploadScreenProp
         <Card className="w-full max-w-md bg-background/90 backdrop-blur-sm border-border/50">
           <CardContent className="flex flex-col gap-5 pt-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div
-                aria-disabled="true"
-                className="border-2 border-dashed border-border rounded-lg p-6 flex flex-col items-center justify-center text-center opacity-50 bg-muted"
+              <label
+                className={`border-2 border-dashed border-border rounded-lg p-6 flex flex-col items-center justify-center text-center transition-colors cursor-pointer ${
+                  isLoading ? 'opacity-50 pointer-events-none' : 'hover:bg-muted/50 hover:border-primary/50'
+                }`}
               >
+                <input type="file" accept=".csv" className="hidden" onChange={onDemoLoad} disabled={isLoading} />
                 <svg aria-hidden="true" className="w-7 h-7 text-muted-foreground mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                 </svg>
                 <span className="font-medium text-sm">Purchase Register (CSV)</span>
-                <span className="text-xs text-muted-foreground mt-1">Coming Soon</span>
-              </div>
+                <span className="text-xs text-muted-foreground mt-1">Click or drag file to upload</span>
+              </label>
 
-              <div
-                aria-disabled="true"
-                className="border-2 border-dashed border-border rounded-lg p-6 flex flex-col items-center justify-center text-center opacity-50 bg-muted"
+              <label
+                className={`border-2 border-dashed border-border rounded-lg p-6 flex flex-col items-center justify-center text-center transition-colors cursor-pointer ${
+                  isLoading ? 'opacity-50 pointer-events-none' : 'hover:bg-muted/50 hover:border-primary/50'
+                }`}
               >
+                <input type="file" accept=".csv" className="hidden" onChange={onDemoLoad} disabled={isLoading} />
                 <svg aria-hidden="true" className="w-7 h-7 text-muted-foreground mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                 </svg>
                 <span className="font-medium text-sm">GST Records (CSV)</span>
-                <span className="text-xs text-muted-foreground mt-1">Coming Soon</span>
-              </div>
+                <span className="text-xs text-muted-foreground mt-1">Click or drag file to upload</span>
+              </label>
             </div>
 
             <div className="w-full flex items-center gap-4" aria-hidden="true">

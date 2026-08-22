@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { ImsAction, ReconciliationResult, ReviewPacket } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,6 @@ import ReviewQueue from "./ReviewQueue";
 import PacketDetail from "./PacketDetail";
 import ReconciliationTableView from "./reconciliation/ReconciliationTableView";
 import ExportButton from "./ExportButton";
-import CopilotChat from "./CopilotChat";
 import { applyImsAction } from "@/lib/api";
 
 interface DashboardScreenProps {
@@ -22,10 +21,7 @@ interface ItcInfo {
   claimPeriod?: string | null;
 }
 
-interface CopilotContext {
-  packetId?: string;
-  runId?: string;
-}
+
 
 type ViewMode = "sheet" | "queue";
 
@@ -34,7 +30,6 @@ export default function DashboardScreen({ result, runId }: DashboardScreenProps)
   const [viewMode, setViewMode] = useState<ViewMode>("sheet");
   const [imsActions, setImsActions] = useState<Record<string, ImsAction>>({});
   const [imsItc, setImsItc] = useState<Record<string, ItcInfo>>({});
-  const [copilotContext, setCopilotContext] = useState<CopilotContext | null>(null);
 
   async function handleImsAction(packetId: string, action: ImsAction) {
     setImsActions((prev) => ({ ...prev, [packetId]: action }));
@@ -55,24 +50,47 @@ export default function DashboardScreen({ result, runId }: DashboardScreenProps)
     }
   }
 
+  const augmentedResult = useMemo(() => {
+    return {
+      ...result,
+      review_packets: [...(result.review_packets || [])].sort((a, b) => (b.risk_profile?.score || 0) - (a.risk_profile?.score || 0)) // Highest Risk First
+    };
+  }, [result]);
+
+  const prioritySummary = useMemo(() => {
+    const summary = {
+      HIGH: { count: 0, impact: 0 },
+      MEDIUM: { count: 0, impact: 0 },
+      LOW: { count: 0, impact: 0 },
+    };
+    augmentedResult.review_packets?.forEach(pkt => {
+      const p = pkt.risk_profile?.priority || "LOW";
+      if (summary[p]) {
+        summary[p].count += 1;
+        summary[p].impact += pkt.risk_profile?.financial_impact || 0;
+      }
+    });
+    return summary;
+  }, [augmentedResult]);
+
   // Derive stats
-  const totalAuto = result.auto_matches.length;
-  const totalReview = result.review_packets.length;
+  const totalAuto = augmentedResult.auto_matches?.length || 0;
+  const totalReview = augmentedResult.review_packets?.length || 0;
 
   // Conservation check: count unique record IDs across outputs
   const outPurchaseIds = new Set<string>();
   const outGstIds = new Set<string>();
 
-  result.auto_matches.forEach((d) => {
-    d.selected_hypothesis.hypothesis_identity.forEach((edge) => {
+  augmentedResult.auto_matches?.forEach((d) => {
+    d.selected_hypothesis?.hypothesis_identity?.forEach((edge) => {
       outPurchaseIds.add(edge[0].split(":").pop()!);
       outGstIds.add(edge[1].split(":").pop()!);
     });
   });
 
-  result.review_packets.forEach((pkt) => {
-    pkt.purchases.forEach((p) => outPurchaseIds.add(p.record_id));
-    pkt.gsts.forEach((g) => outGstIds.add(g.record_id));
+  augmentedResult.review_packets?.forEach((pkt) => {
+    pkt.purchases?.forEach((p) => outPurchaseIds.add(p.record_id));
+    pkt.gsts?.forEach((g) => outGstIds.add(g.record_id));
   });
 
   const totalIn = outPurchaseIds.size + outGstIds.size;
@@ -83,7 +101,7 @@ export default function DashboardScreen({ result, runId }: DashboardScreenProps)
       <PacketDetail
         packet={selectedPacket}
         onBack={() => setSelectedPacket(null)}
-        onAskCopilot={(packetId) => setCopilotContext({ packetId, runId: runId ?? undefined })}
+
         currentAction={imsActions[selectedPacket.packet_id]}
         onAction={(action) => handleImsAction(selectedPacket.packet_id, action)}
         itcInfo={imsItc[selectedPacket.packet_id]}
@@ -141,11 +159,46 @@ export default function DashboardScreen({ result, runId }: DashboardScreenProps)
         </Card>
       </div>
 
+      {/* Priority Summary */}
+      <Card className="bg-muted/30 border-muted">
+        <CardContent className="py-4">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">Reconciliation Priority Summary</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex flex-col gap-1 p-3 rounded border border-destructive/20 bg-destructive/5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-destructive uppercase">High Priority</span>
+                <Badge variant="danger" className="text-xs">{prioritySummary.HIGH.count}</Badge>
+              </div>
+              <span className="text-xs text-muted-foreground mt-1">Critical Risk - Investigate Immediately</span>
+              <span className="text-sm font-mono font-medium mt-1">Financial Impact: ₹{prioritySummary.HIGH.impact.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+            </div>
+            
+            <div className="flex flex-col gap-1 p-3 rounded border border-warning/30 bg-warning/5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-warning-foreground uppercase">Medium Priority</span>
+                <Badge variant="warning" className="text-xs">{prioritySummary.MEDIUM.count}</Badge>
+              </div>
+              <span className="text-xs text-muted-foreground mt-1">Needs Review</span>
+              <span className="text-sm font-mono font-medium mt-1">Financial Impact: ₹{prioritySummary.MEDIUM.impact.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+            </div>
+
+            <div className="flex flex-col gap-1 p-3 rounded border border-success/30 bg-success/5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-success uppercase">Low Priority</span>
+                <Badge variant="success" className="text-xs">{prioritySummary.LOW.count}</Badge>
+              </div>
+              <span className="text-xs text-muted-foreground mt-1">Minor Issues / Monitor</span>
+              <span className="text-sm font-mono font-medium mt-1">Financial Impact: ₹{prioritySummary.LOW.impact.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="flex flex-wrap gap-2 items-center justify-between">
         <div className="flex gap-2 items-center">
-          <Badge variant="neutral">Engine: {result.engine_version}</Badge>
+          <Badge variant="neutral">Engine: {augmentedResult.engine_version}</Badge>
           <Badge variant="neutral" className="font-mono normal-case max-w-xs truncate" >
-            Config: {result.traces?.[0]?.config_hash}
+            Config: {augmentedResult.traces?.[0]?.config_hash}
           </Badge>
           <Badge variant={runId ? "success" : "warning"}>
             {runId ? "Backend run" : "Static demo"}
@@ -169,26 +222,25 @@ export default function DashboardScreen({ result, runId }: DashboardScreenProps)
           >
             Queue View
           </Button>
-          <ExportButton result={result} runId={runId} report="match_summary" />
-          <ExportButton result={result} runId={runId} report="supplier" />
-          <ExportButton result={result} runId={runId} report="invoice" />
+          <ExportButton result={augmentedResult} runId={runId} report="match_summary" />
+          <ExportButton result={augmentedResult} runId={runId} report="supplier" />
+          <ExportButton result={augmentedResult} runId={runId} report="invoice" />
         </div>
       </div>
 
       {viewMode === "sheet" ? (
         <ReconciliationTableView
-          result={result}
+          result={augmentedResult}
           onSelectPacket={setSelectedPacket}
         />
       ) : (
         <ReviewQueue
-          packets={result.review_packets}
+          packets={augmentedResult.review_packets}
           onSelectPacket={setSelectedPacket}
           imsActions={imsActions}
         />
       )}
 
-      {copilotContext && <CopilotChat context={copilotContext} />}
     </div>
   );
 }

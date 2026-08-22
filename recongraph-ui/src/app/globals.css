@@ -2,63 +2,94 @@
 @import "tw-animate-css";
 
 @theme {
-  --font-sans: var(--font-fira-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-fira-code), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-playfair), ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: var(--font-space-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  /* Toko reference theme (strawberry + matcha), dark variant */
-  --color-background: oklch(0.17 0 0); /* #121212 */
-  --color-foreground: oklch(0.97 0 0);
-  --color-card: oklch(0.19 0 0);
-  --color-card-foreground: oklch(0.97 0 0);
-  --color-popover: oklch(0.21 0 0);
-  --color-popover-foreground: oklch(0.97 0 0);
-  --color-primary: oklch(0.7 0.2 18); /* Strawberry */
-  --color-primary-foreground: oklch(0.99 0.01 100);
-  --color-secondary: oklch(0.22 0 0);
-  --color-secondary-foreground: oklch(0.97 0 0);
-  --color-muted: oklch(0.22 0 0);
-  --color-muted-foreground: oklch(0.62 0 0);
-  --color-accent: oklch(0.3 0.08 145 / 28%); /* Matcha wash */
-  --color-accent-foreground: oklch(0.82 0.15 145); /* Matcha green */
-  --color-destructive: oklch(0.704 0.191 22.216);
-  --color-border: oklch(1 0 0 / 12%);
-  --color-input: oklch(1 0 0 / 14%);
-  --color-ring: oklch(0.7 0.2 18);
-
-  /* Reconciliation status semantics */
-  --color-success: oklch(0.82 0.15 145); /* matcha green */
-  --color-success-muted: oklch(0.3 0.08 145 / 28%);
-  --color-warning: oklch(0.83 0.15 85); /* amber */
-  --color-warning-muted: oklch(0.35 0.08 85 / 25%);
-  --color-info: oklch(0.75 0.13 250); /* periwinkle — distinct from strawberry */
-  --color-info-muted: oklch(0.32 0.07 250 / 28%);
-
-  --radius-lg: 0.7rem;
+  --color-bg-primary: #f7f6f2;
+  --color-text-primary: #1c1c1c;
+  --color-accent: #3d7068;
+  --color-border-color: #e5e4de;
+  --color-gray-color: #B4B4B4;
 }
 
 @layer base {
   body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
     font-family: var(--font-sans);
+    overflow-x: hidden;
   }
 
-  /* Visible keyboard focus on every interactive control (WCAG 2.2) */
   :focus-visible {
-    outline: 2px solid var(--color-ring);
+    outline: 2px solid var(--color-accent);
     outline-offset: 2px;
     border-radius: 2px;
   }
 
   ::selection {
-    background: oklch(0.7 0.2 18 / 28%);
+    background: #3d7068;
+    color: white;
   }
 }
 
 /* Custom utilities */
-.glass-panel {
-  background: var(--color-card);
-  border: 1px solid var(--color-border);
+@layer utilities {
+  .editorial-grid {
+    background-image: 
+      linear-gradient(to right, var(--color-border-color) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--color-border-color) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: radial-gradient(circle at center, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 70%);
+    pointer-events: none;
+  }
+
+  .structural-line {
+    background-color: var(--color-border-color);
+    width: 1px;
+    height: 100%;
+    position: fixed;
+    top: 0;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .nav-transition {
+    transition: background-color 0.7s cubic-bezier(0.16, 1, 0.3, 1), padding 0.7s cubic-bezier(0.16, 1, 0.3, 1), border-bottom 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .scan-line {
+    animation: scan 2s infinite cubic-bezier(0.8, 0, 0.2, 1);
+  }
+
+  .cta-button-hover:hover .tracking-slide {
+    letter-spacing: 0.4em;
+  }
+
+  .cta-button-hover:hover .bg-overlay {
+    transform: translateY(0);
+  }
+
+  .shadow-drop {
+    box-shadow: 4px 4px 0px var(--color-accent);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .fade-in-section {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .fade-in-section.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scan {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -4,6 +4,15 @@ export type ImsAction = "No Action" | "Accept" | "Reject" | "Pending" | "Ignore"
 
 export type ItcAvailability = "Available" | "Unavailable" | "Ineligible" | "Unknown";
 
+export type PriorityLevel = "HIGH" | "MEDIUM" | "LOW";
+
+export interface RiskProfile {
+  priority: PriorityLevel;
+  score: number;
+  reasons: string[];
+  financial_impact: number;
+}
+
 export type MatchStatus =
   | "Exact Match"
   | "Suggested Match"
@@ -39,7 +48,7 @@ export interface RecordData {
 export interface EvaluatedHypothesis {
   hypothesis_identity: string[][];
   eligibility: string;
-  semantic_findings: string[];
+  violations: string[];
   base_score: number | null; // e.g. 10000 for 1.0, to be divided by 10000
   coverage: number | null;
   relationship_score: number | null;
@@ -78,6 +87,7 @@ export interface ReviewPacket {
   ai_provenance?: any;
   ims?: ImsDecision | null;
   match_status?: MatchStatus;
+  risk_profile?: RiskProfile;
 }
 
 export interface AutoMatch {

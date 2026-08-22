@@ -1,97 +1,55 @@
-"use client";
-
-import Image from "next/image";
-import { motion } from "motion/react";
-import { ArrowRight, CheckCircle, Shield, Zap } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { FileText, Landmark } from "lucide-react";
+import Link from "next/link";
 
 export function Hero() {
-  const trustItems = [
-    { icon: CheckCircle, label: "0 FP on adversarial corpus", color: "success" },
-    { icon: Shield, label: "Strict conservation (In = Out)", color: "primary" },
-    { icon: Zap, label: "Threshold calibrated at 0.95", color: "warning" },
-  ];
-
   return (
-    <section className="py-14 sm:py-20 lg:py-24" aria-labelledby="hero-heading">
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="mx-auto flex max-w-5xl flex-col items-center gap-8 text-center"
-      >
-        <motion.h1
-          id="hero-heading"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
-          className="text-[clamp(1.75rem,1rem+4vw,2.5rem)] sm:text-[clamp(2.25rem,1.25rem+4vw,3rem)] lg:text-[clamp(2.75rem,1.5rem+4.5vw,3.5rem)] leading-[1.05] font-medium tracking-[-0.03em] text-balance"
-        >
-          Prove every GST match.<br />
-          <span className="text-primary">Explain every exception.</span>
-        </motion.h1>
+    <section className="relative pt-48 pb-40 z-10 fade-in-section">
+      <div className="max-w-7xl mx-auto px-8 flex flex-col items-center text-center">
+        <h1 className="font-serif text-[8vw] leading-[0.9] uppercase font-light tracking-tighter mb-12">
+          Reconciliation, <br />
+          <span className="italic text-[#B4B4B4]">Beyond</span> <br />
+          Matching.
+        </h1>
+        <p className="max-w-2xl font-sans text-xl text-[#1c1c1c]/70 mb-12">
+          ReconGraph doesn&apos;t just find mismatches. It investigates them &mdash; connecting financial evidence, explaining discrepancies, prioritizing risk, and helping teams decide what needs attention.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Link href="/app" id="cta-hero-start" className="cta-button-hover group relative overflow-hidden bg-[#3d7068] text-white px-10 py-5 font-mono text-[10px] uppercase tracking-[0.25em] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] rounded-[2px] w-full sm:w-auto text-center inline-block">
+            <span className="relative z-10 tracking-slide transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]">
+              Start a Reconciliation
+            </span>
+            <div className="bg-overlay absolute inset-0 bg-white/20 translate-y-full transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] z-0"></div>
+          </Link>
+          <Link href="#how-it-works" id="cta-hero-how" className="px-10 py-5 border border-[#e5e4de] font-mono text-[10px] uppercase tracking-[0.25em] hover:bg-white transition-colors duration-500 rounded-[2px] w-full sm:w-auto text-center inline-block">
+            See How It Works
+          </Link>
+        </div>
 
-        <motion.p
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
-          className="max-w-2xl text-base sm:text-lg text-muted-foreground leading-relaxed"
-        >
-          Deterministic graph engine for Purchase Register vs GSTR-2B reconciliation.
-          Auto-match with calibrated confidence, strict conservation guarantees, and an
-          explainable human review queue.
-        </motion.p>
-
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
-          className="flex flex-col sm:flex-row items-center justify-center gap-3"
-        >
-          <Button size="lg" asChild className="w-full sm:w-auto">
-            <a href="/app?demo=1">
-              Try the Challenge Demo
-              <ArrowRight className="size-4 ml-2" aria-hidden="true" />
-            </a>
-          </Button>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.4 }}
-          className="relative w-full max-w-4xl"
-        >
-          <div className="relative aspect-video rounded-xl overflow-hidden border border-border bg-muted ring-1 ring-foreground/5">
-            <Image
-              src="/images/hero-dashboard.jpg"
-              alt="ReconGraph dashboard showing reconciliation results with auto-match rates and review queue"
-              fill
-              className="object-cover opacity-90"
-              priority
-              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 90vw, 80vw"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent pointer-events-none" />
-            <div className="absolute bottom-4 left-4 right-4 flex flex-wrap items-center justify-center gap-3 pointer-events-auto">
-              {trustItems.map((item, i) => (
-                <motion.span
-                  key={item.label}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: 0.5 + i * 0.1 }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background/80 backdrop-blur-sm border border-border text-xs font-medium"
-                >
-                  <item.icon
-                    className={`size-3.5 text-[var(--color-${item.color})]`}
-                    aria-hidden="true"
-                  />
-                  <span className="text-foreground">{item.label}</span>
-                </motion.span>
-              ))}
+        {/* Subtle Hero Visual */}
+        <div className="mt-24 w-full max-w-4xl flex items-center justify-between border-y border-[#e5e4de] py-12 px-2 sm:px-8 overflow-hidden">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border border-[#e5e4de] flex items-center justify-center bg-white">
+              <FileText className="text-xl text-[#1c1c1c]" size={20} />
             </div>
+            <span className="font-mono text-[8px] uppercase tracking-[0.3em] hidden sm:block">Purchase Register</span>
           </div>
-        </motion.div>
-      </motion.div>
+          <div className="h-[1px] flex-1 bg-[#e5e4de] mx-4 sm:mx-8 relative overflow-hidden hidden sm:block">
+            <div className="absolute top-0 left-0 h-full w-20 bg-[#3d7068] scan-line"></div>
+          </div>
+          <div className="px-4 sm:px-6 py-4 border border-[#3d7068] bg-[#f7f6f2] z-10">
+            <span className="font-serif text-lg tracking-tight uppercase">ReconGraph</span>
+          </div>
+          <div className="h-[1px] flex-1 bg-[#e5e4de] mx-4 sm:mx-8 relative overflow-hidden hidden sm:block">
+            <div className="absolute top-0 left-0 h-full w-20 bg-[#3d7068] scan-line" style={{ animationDelay: "1s" }}></div>
+          </div>
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border border-[#e5e4de] flex items-center justify-center bg-white">
+              <Landmark className="text-xl text-[#1c1c1c]" size={20} />
+            </div>
+            <span className="font-mono text-[8px] uppercase tracking-[0.3em] hidden sm:block">GSTR-2B</span>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

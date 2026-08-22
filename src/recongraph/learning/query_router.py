@@ -97,8 +97,10 @@ def classify_query(
     # 3. Route based on scores
     if recon_score > 0 and gst_score > 0:
         return QueryType.COMPLEX  # Needs both RAG + tools
-    elif recon_score == 1:
+    elif recon_score > 0:
         return QueryType.RECONCILIATION
+    elif gst_score > 0:
+        return QueryType.GST_KNOWLEDGE
     else:
         return QueryType.SIMPLE
 

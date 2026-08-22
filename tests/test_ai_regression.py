@@ -14,7 +14,11 @@ def model():
 
 def predict_prob(model, pr: dict, gstr2b: dict) -> float:
     features = extract_feature_vector(pr, gstr2b)
-    prob = model.predict_proba([features])[0][1]
+    if isinstance(model, dict):
+        score = model["classifier"].predict_proba([features])[0][1]
+        prob = model["calibrator"].transform([score])[0] if model.get("calibrator") else score
+    else:
+        prob = model.predict_proba([features])[0][1]
     return float(prob)
 
 def test_exact_match(model):

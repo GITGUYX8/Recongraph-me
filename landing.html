@@ -1,0 +1,587 @@
+<!DOCTYPE html><html lang="en"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReconGraph | Financial Reconciliation & Investigation</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Space+Grotesk:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap');
+
+    :root {
+      --editorial-bg: #f7f6f2;
+      --editorial-fg: #1c1c1c;
+      --editorial-accent: #3d7068;
+      --editorial-border: #e5e4de;
+      --editorial-gray: #B4B4B4;
+      --editorial-bezier: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    body {
+      background-color: var(--editorial-bg);
+      color: var(--editorial-fg);
+      font-family: 'Space Grotesk', sans-serif;
+      overflow-x: hidden;
+    }
+
+    .font-serif { font-family: 'Playfair Display', serif; }
+    .font-mono { font-family: 'Space Mono', monospace; }
+
+    .editorial-grid {
+      background-image: 
+        linear-gradient(to right, var(--editorial-border) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--editorial-border) 1px, transparent 1px);
+      background-size: 40px 40px;
+      mask-image: radial-gradient(circle at center, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 70%);
+      pointer-events: none;
+    }
+
+    .structural-line {
+      background-color: var(--editorial-border);
+      width: 1px;
+      height: 100%;
+      position: fixed;
+      top: 0;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .nav-transition {
+      transition: background-color 0.7s var(--editorial-bezier), padding 0.7s var(--editorial-bezier), border-bottom 0.7s var(--editorial-bezier);
+    }
+
+    .scan-line {
+      animation: scan 2s infinite cubic-bezier(0.8, 0, 0.2, 1);
+    }
+
+    @keyframes scan {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(400%); }
+    }
+
+    .cta-button-hover:hover .tracking-slide {
+      letter-spacing: 0.4em;
+    }
+
+    .cta-button-hover:hover .bg-overlay {
+      transform: translateY(0);
+    }
+
+    .input-editorial {
+      border-bottom: 1px solid var(--editorial-border);
+      background: transparent;
+      outline: none;
+      transition: border-color 0.3s ease;
+    }
+
+    .shadow-drop {
+      box-shadow: 4px 4px 0px var(--editorial-accent);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--editorial-accent);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.5; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.5; }
+    }
+
+    .fade-in-section {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.8s var(--editorial-bezier);
+    }
+
+    .fade-in-section.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="min-h-screen relative selection:bg-[#3d7068] selection:text-white">
+    <div class="fixed inset-0 editorial-grid z-0"></div>
+    <div class="structural-line" style="left: 25%;"></div>
+    <div class="structural-line" style="left: 50%;"></div>
+    <div class="structural-line" style="left: 75%;"></div>
+
+    <nav id="main-nav" class="fixed top-0 left-0 w-full z-50 pt-8 pb-4 nav-transition">
+      <div class="max-w-7xl mx-auto px-8 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="h-[1px] bg-foreground w-6"></div>
+          <a href="#" id="nav-brand-logo" class="font-serif text-[20px] uppercase tracking-tighter">ReconGraph</a>
+          <div class="h-[1px] bg-foreground w-8"></div>
+        </div>
+        <div class="flex items-center gap-12">
+          <a href="#why-recong" id="nav-link-why" class="font-mono text-[10px] uppercase tracking-[0.3em] hover:opacity-60 transition-opacity">Why ReconGraph</a>
+          <a href="#how-it-works" id="nav-link-how" class="font-mono text-[10px] uppercase tracking-[0.3em] hover:opacity-60 transition-opacity">How It Works</a>
+          <a href="#features" id="nav-link-features" class="font-mono text-[10px] uppercase tracking-[0.3em] hover:opacity-60 transition-opacity">Features</a>
+          <a href="#faq" id="nav-link-faq" class="font-mono text-[10px] uppercase tracking-[0.3em] hover:opacity-60 transition-opacity">FAQ</a>
+          <a href="#demo" id="nav-cta-demo" class="font-mono text-[10px] uppercase tracking-[0.3em] border border-[#e5e4de] px-4 py-2 hover:bg-[#1c1c1c] hover:text-[#f7f6f2] transition-all">Try Demo &rarr;</a>
+        </div>
+      </div>
+    </nav>
+
+    <section class="relative pt-48 pb-40 z-10">
+      <div class="max-w-7xl mx-auto px-8 flex flex-col items-center text-center">
+
+        <h1 class="font-serif text-[8vw] leading-[0.9] uppercase font-light tracking-tighter mb-12">
+          Reconciliation, <br> 
+          <span class="italic text-[#B4B4B4]">Beyond</span> <br>
+          Matching.
+        </h1>
+        <p class="max-w-2xl font-sans text-xl text-[#1c1c1c]/70 mb-12">
+          ReconGraph doesn&rsquo;t just find mismatches. It investigates them &mdash; connecting financial evidence, explaining discrepancies, prioritizing risk, and helping teams decide what needs attention.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4">
+          <button id="cta-hero-start" class="cta-button-hover group relative overflow-hidden bg-[#3d7068] text-white px-10 py-5 font-mono text-[10px] uppercase tracking-[0.25em] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] rounded-[2px]">
+            <span class="relative z-10 tracking-slide transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]">Start a Reconciliation</span>
+            <div class="bg-overlay absolute inset-0 bg-white/20 translate-y-full transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] z-0"></div>
+          </button>
+          <button id="cta-hero-how" class="px-10 py-5 border border-[#e5e4de] font-mono text-[10px] uppercase tracking-[0.25em] hover:bg-white transition-colors duration-500 rounded-[2px]">
+            See How It Works
+          </button>
+        </div>
+
+        <!-- Subtle Hero Visual -->
+        <div class="mt-24 w-full max-w-4xl flex items-center justify-between border-y border-[#e5e4de] py-12 px-8">
+          <div class="flex flex-col items-center gap-4">
+             <div class="w-12 h-12 border border-[#e5e4de] flex items-center justify-center"><iconify-icon icon="lucide:file-text" class="text-xl"></iconify-icon></div>
+             <span class="font-mono text-[8px] uppercase tracking-[0.3em]">Purchase Register</span>
+          </div>
+          <div class="h-[1px] flex-1 bg-[#e5e4de] mx-8 relative overflow-hidden">
+             <div class="absolute top-0 left-0 h-full w-20 bg-[#3d7068] animate-[scan_3s_infinite_linear]"></div>
+          </div>
+          <div class="px-6 py-4 border border-[#3d7068] bg-[#f7f6f2] z-10">
+             <span class="font-serif text-lg tracking-tight uppercase">ReconGraph</span>
+          </div>
+          <div class="h-[1px] flex-1 bg-[#e5e4de] mx-8 relative overflow-hidden">
+             <div class="absolute top-0 left-0 h-full w-20 bg-[#3d7068] animate-[scan_3s_infinite_linear] delay-1000"></div>
+          </div>
+          <div class="flex flex-col items-center gap-4">
+             <div class="w-12 h-12 border border-[#e5e4de] flex items-center justify-center"><iconify-icon icon="lucide:landmark" class="text-xl"></iconify-icon></div>
+             <span class="font-mono text-[8px] uppercase tracking-[0.3em]">GSTR-2B</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="why-recong" class="border-t border-[#e5e4de] bg-[#f7f6f2] relative z-20 overflow-hidden">
+      <div class="max-w-7xl mx-auto py-32 px-8 grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
+        <div>
+          <h2 class="font-serif text-6xl leading-[1.1] uppercase tracking-tighter mb-8">
+            The problem isn&rsquo;t matching. <br> <span class="italic text-[#B4B4B4]">It&rsquo;s understanding.</span>
+          </h2>
+          <p class="font-sans text-lg text-[#1c1c1c]/70 mb-12 max-w-lg">
+            Financial reconciliation is not simply about finding two records that don&rsquo;t match. A discrepancy can be a timing difference, missing evidence, duplicate, data-entry issue, or genuine contradiction.
+          </p>
+        </div>
+        
+        <div class="grid grid-cols-1 gap-8">
+           <div class="p-8 border border-[#e5e4de] bg-white">
+             <span class="font-mono text-[10px] text-[#B4B4B4] uppercase block mb-6 tracking-widest">Traditional systems stop at:</span>
+             <div class="flex items-center gap-8">
+                <span class="font-serif text-3xl opacity-30">MATCH</span>
+                <div class="h-[1px] w-12 bg-[#e5e4de]"></div>
+                <span class="font-serif text-3xl uppercase tracking-tighter text-[#1c1c1c]">Mismatch</span>
+             </div>
+           </div>
+           
+           <div class="p-8 border border-[#3d7068] bg-[#f7f6f2] relative">
+             <span class="font-mono text-[10px] text-[#3d7068] uppercase block mb-6 tracking-widest">ReconGraph goes further:</span>
+             <div class="flex flex-wrap items-center gap-4 font-serif text-2xl uppercase tracking-tighter">
+                <span>Detect</span>
+                <iconify-icon icon="lucide:arrow-right" class="text-sm text-[#3d7068]"></iconify-icon>
+                <span>Understand</span>
+                <iconify-icon icon="lucide:arrow-right" class="text-sm text-[#3d7068]"></iconify-icon>
+                <span>Prioritize</span>
+                <iconify-icon icon="lucide:arrow-right" class="text-sm text-[#3d7068]"></iconify-icon>
+                <span>Act</span>
+                <iconify-icon icon="lucide:arrow-right" class="text-sm text-[#3d7068]"></iconify-icon>
+                <span>Learn</span>
+             </div>
+           </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="how-it-works" class="border-y border-[#e5e4de] py-32 relative z-10">
+      <div class="max-w-7xl mx-auto px-8">
+        <h2 class="font-serif text-5xl uppercase tracking-tighter mb-20 text-center">From Records to Decisions.</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-24 gap-x-12">
+          <div class="flex flex-col border-l border-[#e5e4de] pl-8">
+            <div class="font-mono text-[12px] mb-4 text-[#3d7068]">01 — INGEST</div>
+            <p class="font-sans text-base leading-relaxed">Purchase Register, GSTR-2B and financial records.</p>
+          </div>
+          <div class="flex flex-col border-l border-[#e5e4de] pl-8">
+            <div class="font-mono text-[12px] mb-4 text-[#3d7068]">02 — BUILD THE EVIDENCE GRAPH</div>
+            <p class="font-sans text-base leading-relaxed">Connect invoices, GSTINs, vendors, amounts, dates and tax evidence.</p>
+          </div>
+          <div class="flex flex-col border-l border-[#e5e4de] pl-8">
+            <div class="font-mono text-[12px] mb-4 text-[#3d7068]">03 — RECONCILE</div>
+            <p class="font-sans text-base leading-relaxed">Deterministic rules + graph relationships + calibrated ML identify the strongest matches.</p>
+          </div>
+          <div class="flex flex-col border-l border-[#e5e4de] pl-8">
+            <div class="font-mono text-[12px] mb-4 text-[#3d7068]">04 — INVESTIGATE</div>
+            <p class="font-sans text-base leading-relaxed">AI analyzes exceptions and explains why records disagree.</p>
+          </div>
+          <div class="flex flex-col border-l border-[#e5e4de] pl-8">
+            <div class="font-mono text-[12px] mb-4 text-[#3d7068]">05 — PRIORITIZE</div>
+            <p class="font-sans text-base leading-relaxed">Adaptive Risk Engine ranks cases based on financial impact, severity, uncertainty and organization-specific priorities.</p>
+          </div>
+          <div class="flex flex-col border-l border-[#e5e4de] pl-8">
+            <div class="font-mono text-[12px] mb-4 text-[#3d7068]">06 — LEARN</div>
+            <p class="font-sans text-base leading-relaxed">Human decisions become feedback that calibrates the organization&rsquo;s future risk profile.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-32 bg-[#f7f6f2] relative z-20">
+      <div class="max-w-7xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+        <div>
+          <h2 class="font-serif text-5xl leading-[1.1] uppercase tracking-tighter mb-8">
+            Matching finds the exception. <br> <span class="italic text-[#3d7068]">AI investigates it.</span>
+          </h2>
+          <p class="font-sans text-lg text-[#1c1c1c]/70 mb-10 max-w-lg">
+            ReconGraph creates deep contextual analysis for every discrepancy, allowing your team to move past row-matching into actual financial investigation.
+          </p>
+          <button id="cta-investigate" class="font-mono text-[10px] uppercase tracking-[0.2em] border border-[#e5e4de] px-8 py-4 hover:bg-[#1c1c1c] hover:text-[#f7f6f2] transition-all">
+            Explore Case Analysis
+          </button>
+        </div>
+        
+        <div class="bg-white border border-[#e5e4de] p-8 rounded-[2px] shadow-sm">
+           <div class="flex justify-between items-start mb-8">
+             <div>
+               <div class="font-mono text-[10px] text-[#B4B4B4] uppercase tracking-widest mb-1">Case ID</div>
+               <div class="font-serif text-xl">Invoice #INV-8291</div>
+             </div>
+             <div class="text-right">
+               <div class="font-mono text-[10px] text-[#3d7068] uppercase tracking-widest mb-1">Likely Match</div>
+               <div class="font-serif text-xl text-[#3d7068]">87.2% Confidence</div>
+             </div>
+           </div>
+           
+           <div class="space-y-4 mb-8">
+             <div class="flex items-center gap-3 font-mono text-[10px] uppercase tracking-wider">
+               <iconify-icon icon="lucide:check-circle" class="text-[#3d7068]"></iconify-icon>
+               <span>GSTIN matches</span>
+             </div>
+             <div class="flex items-center gap-3 font-mono text-[10px] uppercase tracking-wider">
+               <iconify-icon icon="lucide:check-circle" class="text-[#3d7068]"></iconify-icon>
+               <span>Supplier matches</span>
+             </div>
+             <div class="flex items-center gap-3 font-mono text-[10px] uppercase tracking-wider">
+               <iconify-icon icon="lucide:check-circle" class="text-[#3d7068]"></iconify-icon>
+               <span>Taxable amount matches</span>
+             </div>
+             <div class="flex items-center gap-3 font-mono text-[10px] uppercase tracking-wider text-amber-600">
+               <iconify-icon icon="lucide:alert-triangle"></iconify-icon>
+               <span>Invoice date differs</span>
+             </div>
+             <div class="flex items-center gap-3 font-mono text-[10px] uppercase tracking-wider text-red-600">
+               <iconify-icon icon="lucide:alert-circle"></iconify-icon>
+               <span>₹50 amount difference</span>
+             </div>
+           </div>
+           
+           <div class="p-6 bg-[#f7f6f2] border-l-2 border-[#3d7068] mb-8">
+             <div class="font-mono text-[8px] uppercase tracking-[0.3em] mb-3 text-[#3d7068]">AI Assessment</div>
+             <p class="font-serif text-lg italic leading-relaxed">
+               &ldquo;These records are likely associated with the same transaction. The discrepancy appears minor, but the filing period should be verified.&rdquo;
+             </p>
+           </div>
+           
+           <button id="card-review-btn" class="w-full bg-[#3d7068] text-white py-4 font-mono text-[10px] uppercase tracking-[0.3em]">
+             Review Case
+           </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-32 border-y border-[#e5e4de] relative z-10">
+      <div class="max-w-7xl mx-auto px-8">
+        <div class="flex flex-col items-center text-center mb-24">
+          <h2 class="font-serif text-5xl leading-[1.1] uppercase tracking-tighter mb-8">
+            RECONGRAPH LEARNS WHAT MATTERS TO YOU
+          </h2>
+          <p class="font-sans text-lg text-[#1c1c1c]/70 max-w-2xl">
+            Every organization has different financial priorities. ReconGraph creates an organization-specific risk profile and adapts prioritization based on how that organization reviews exceptions.
+          </p>
+        </div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-20">
+           <div class="p-12 border border-[#e5e4de] bg-white">
+             <div class="font-mono text-[10px] uppercase tracking-[0.4em] mb-8 text-[#B4B4B4]">Company A / Risk Profile</div>
+             <div class="space-y-6">
+                <div class="flex justify-between items-center border-b border-[#e5e4de] pb-4">
+                  <span class="font-serif text-xl">Date Mismatch</span>
+                  <span class="font-mono text-[10px] text-green-600 px-3 py-1 border border-green-600 uppercase tracking-widest">Low</span>
+                </div>
+                <div class="flex justify-between items-center border-b border-[#e5e4de] pb-4">
+                  <span class="font-serif text-xl">GSTIN Mismatch</span>
+                  <span class="font-mono text-[10px] text-red-600 px-3 py-1 border border-red-600 uppercase tracking-widest">Critical</span>
+                </div>
+             </div>
+           </div>
+           <div class="p-12 border border-[#e5e4de] bg-white">
+             <div class="font-mono text-[10px] uppercase tracking-[0.4em] mb-8 text-[#B4B4B4]">Company B / Risk Profile</div>
+             <div class="space-y-6">
+                <div class="flex justify-between items-center border-b border-[#e5e4de] pb-4">
+                  <span class="font-serif text-xl">Date Mismatch</span>
+                  <span class="font-mono text-[10px] text-amber-600 px-3 py-1 border border-amber-600 uppercase tracking-widest">High</span>
+                </div>
+                <div class="flex justify-between items-center border-b border-[#e5e4de] pb-4">
+                  <span class="font-serif text-xl">GSTIN Mismatch</span>
+                  <span class="font-mono text-[10px] text-red-600 px-3 py-1 border border-red-600 uppercase tracking-widest">Critical</span>
+                </div>
+             </div>
+           </div>
+        </div>
+        
+        <div class="flex flex-wrap justify-center items-center gap-6 font-mono text-[10px] uppercase tracking-[0.2em] text-[#B4B4B4]">
+          <span>AI Priority</span>
+          <iconify-icon icon="lucide:arrow-right"></iconify-icon>
+          <span class="text-[#1c1c1c]">Human Feedback</span>
+          <iconify-icon icon="lucide:arrow-right"></iconify-icon>
+          <span>Organization Profile</span>
+          <iconify-icon icon="lucide:arrow-right"></iconify-icon>
+          <span class="text-[#1c1c1c]">Future Priorities</span>
+        </div>
+        <div class="text-center mt-12 font-serif italic text-2xl text-[#1c1c1c]/40">
+          &ldquo;One reconciliation engine. Different organizations. Different learned priorities.&rdquo;
+        </div>
+      </div>
+    </section>
+
+    <section class="py-32 relative z-20">
+      <div class="max-w-7xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-24">
+         <div>
+           <h2 class="font-serif text-5xl leading-[1.1] uppercase tracking-tighter mb-8">
+            AI recommends. <br> People decide. <br> <span class="italic text-[#3d7068]">The system learns.</span>
+           </h2>
+           <p class="font-sans text-lg text-[#1c1c1c]/70">
+             ReconGraph closes the gap between automated detection and human expertise, turning every correction into structural organizational intelligence.
+           </p>
+         </div>
+         <div class="flex flex-col justify-between py-8 space-y-12 border-l border-[#e5e4de] pl-12">
+            <div class="font-mono text-[12px] opacity-60 uppercase">01 &mdash; AI identifies exception</div>
+            <div class="font-mono text-[12px] uppercase">02 &mdash; Human reviews / changes priority</div>
+            <div class="font-mono text-[12px] opacity-60 uppercase">03 &mdash; Feedback is recorded</div>
+            <div class="font-mono text-[12px] uppercase">04 &mdash; Organization risk profile adapts</div>
+            <div class="font-mono text-[12px] opacity-60 uppercase">05 &mdash; Future reconciliation becomes more relevant</div>
+         </div>
+      </div>
+    </section>
+
+    <section id="features" class="py-32 border-t border-[#e5e4de] relative z-10">
+      <div class="max-w-7xl mx-auto px-8">
+        <h2 class="font-serif text-5xl uppercase tracking-tighter mb-20">Built for the exceptions.</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 border-l border-t border-[#e5e4de]">
+           <div class="p-12 border-r border-b border-[#e5e4de] hover:bg-white transition-colors duration-700">
+             <h3 class="font-mono text-[10px] uppercase tracking-[0.3em] mb-4 text-[#3d7068]">Evidence Graph</h3>
+             <p class="text-sm text-[#1c1c1c]/70">Financial records become connected evidence instead of isolated rows.</p>
+           </div>
+           <div class="p-12 border-r border-b border-[#e5e4de] hover:bg-white transition-colors duration-700">
+             <h3 class="font-mono text-[10px] uppercase tracking-[0.3em] mb-4 text-[#3d7068]">Intelligent Reconciliation</h3>
+             <p class="text-sm text-[#1c1c1c]/70">Deterministic rules + graph reasoning + calibrated ML.</p>
+           </div>
+           <div class="p-12 border-r border-b border-[#e5e4de] hover:bg-white transition-colors duration-700">
+             <h3 class="font-mono text-[10px] uppercase tracking-[0.3em] mb-4 text-[#3d7068]">AI Exception Investigation</h3>
+             <p class="text-sm text-[#1c1c1c]/70">Understand why a discrepancy happened with contextual explanations.</p>
+           </div>
+           <div class="p-12 border-r border-b border-[#e5e4de] hover:bg-white transition-colors duration-700">
+             <h3 class="font-mono text-[10px] uppercase tracking-[0.3em] mb-4 text-[#3d7068]">Explainable Decisions</h3>
+             <p class="text-sm text-[#1c1c1c]/70">See the evidence behind confidence and recommendations.</p>
+           </div>
+           <div class="p-12 border-r border-b border-[#e5e4de] hover:bg-white transition-colors duration-700">
+             <h3 class="font-mono text-[10px] uppercase tracking-[0.3em] mb-4 text-[#3d7068]">Adaptive Risk Engine</h3>
+             <p class="text-sm text-[#1c1c1c]/70">Prioritize exceptions according to financial impact and policy.</p>
+           </div>
+           <div class="p-12 border-r border-b border-[#e5e4de] hover:bg-white transition-colors duration-700">
+             <h3 class="font-mono text-[10px] uppercase tracking-[0.3em] mb-4 text-[#3d7068]">Organization Learning</h3>
+             <p class="text-sm text-[#1c1c1c]/70">Each company develops its own risk profile from human feedback.</p>
+           </div>
+           <div class="p-12 border-r border-b border-[#e5e4de] hover:bg-white transition-colors duration-700">
+             <h3 class="font-mono text-[10px] uppercase tracking-[0.3em] mb-4 text-[#3d7068]">Human-in-the-Loop</h3>
+             <p class="text-sm text-[#1c1c1c]/70">Approvals, rejections and corrections become system feedback.</p>
+           </div>
+           <div class="p-12 border-r border-b border-[#e5e4de] hover:bg-white transition-colors duration-700">
+             <h3 class="font-mono text-[10px] uppercase tracking-[0.3em] mb-4 text-[#3d7068]">GST-Grounded AI</h3>
+             <p class="text-sm text-[#1c1c1c]/70">Explanations grounded in relevant jurisdictional knowledge.</p>
+           </div>
+           <div class="p-12 border-r border-b border-[#e5e4de] hover:bg-white transition-colors duration-700">
+             <h3 class="font-mono text-[10px] uppercase tracking-[0.3em] mb-4 text-[#3d7068]">Vendor Intelligence</h3>
+             <p class="text-sm text-[#1c1c1c]/70">Identify recurring discrepancies and vendor patterns.</p>
+           </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-40 bg-[#f7f6f2] relative z-20 overflow-hidden">
+      <div class="max-w-7xl mx-auto px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
+           <div>
+              <h2 class="font-serif text-5xl uppercase tracking-tighter mb-8">
+                A spreadsheet sees rows. <br> <span class="italic text-[#B4B4B4]">ReconGraph sees relationships.</span>
+              </h2>
+              <p class="font-sans text-lg text-[#1c1c1c]/70 max-w-lg mb-12">
+                ReconGraph models financial records as connected evidence, allowing reconciliation to move beyond isolated row-to-row comparison.
+              </p>
+              <div class="flex gap-8 items-center">
+                <div class="flex -space-x-4">
+                  <div class="w-12 h-12 rounded-full border border-[#e5e4de] bg-white flex items-center justify-center"><iconify-icon icon="lucide:database"></iconify-icon></div>
+                  <div class="w-12 h-12 rounded-full border border-[#e5e4de] bg-white flex items-center justify-center"><iconify-icon icon="lucide:git-branch"></iconify-icon></div>
+                  <div class="w-12 h-12 rounded-full border border-[#e5e4de] bg-white flex items-center justify-center"><iconify-icon icon="lucide:share-2"></iconify-icon></div>
+                </div>
+                <span class="font-mono text-[10px] uppercase tracking-[0.3em] text-[#B4B4B4]">Graph architecture</span>
+              </div>
+           </div>
+           <div class="relative">
+             <div class="p-16 border border-[#e5e4de] bg-white aspect-square flex items-center justify-center">
+                <!-- Abstract Graph Visual -->
+                <div class="relative w-full h-full flex items-center justify-center">
+                   <div class="absolute w-[80%] h-[80%] border border-dashed border-[#e5e4de] rounded-full"></div>
+                   <div class="grid grid-cols-2 gap-20 relative z-10">
+                      <div class="w-16 h-16 border border-[#3d7068] bg-[#f7f6f2] flex items-center justify-center font-mono text-[8px] uppercase text-center p-2">Supplier</div>
+                      <div class="w-16 h-16 border border-[#e5e4de] bg-white flex items-center justify-center font-mono text-[8px] uppercase text-center p-2">Invoice</div>
+                      <div class="w-16 h-16 border border-[#e5e4de] bg-white flex items-center justify-center font-mono text-[8px] uppercase text-center p-2">Register</div>
+                      <div class="w-16 h-16 border border-[#3d7068] bg-[#f7f6f2] flex items-center justify-center font-mono text-[8px] uppercase text-center p-2">GST/Tax</div>
+                   </div>
+                   <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 400 400">
+                      <line x1="150" y1="150" x2="250" y2="150" stroke="#e5e4de" stroke-width="1" />
+                      <line x1="150" y1="150" x2="150" y2="250" stroke="#3d7068" stroke-width="1" />
+                      <line x1="250" y1="150" x2="250" y2="250" stroke="#e5e4de" stroke-width="1" />
+                      <line x1="150" y1="250" x2="250" y2="250" stroke="#3d7068" stroke-width="1" />
+                   </svg>
+                </div>
+             </div>
+           </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-32 border-t border-[#e5e4de] relative z-10">
+      <div class="max-w-7xl mx-auto px-8">
+        <h2 class="font-serif text-5xl uppercase tracking-tighter mb-20 text-center">GST is the starting point.</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+           <div class="p-12 border border-[#3d7068] bg-[#f7f6f2]">
+             <div class="font-mono text-[10px] uppercase mb-8">Today</div>
+             <h3 class="font-serif text-2xl mb-6">Purchase Register &harr; GSTR-2B</h3>
+             <p class="text-sm text-[#1c1c1c]/70">Seamless reconciliation of primary tax filings with internal records.</p>
+           </div>
+           <div class="p-12 border border-[#e5e4de]">
+             <div class="font-mono text-[10px] uppercase mb-8 opacity-40">Next</div>
+             <h3 class="font-serif text-2xl mb-6">Invoices &harr; Vendors &harr; Ledgers</h3>
+             <p class="text-sm text-[#1c1c1c]/70">Expanding to holistic enterprise data integrity across all internal systems.</p>
+           </div>
+           <div class="p-12 border border-[#e5e4de]">
+             <div class="font-mono text-[10px] uppercase mb-8 opacity-40">Vision</div>
+             <h3 class="font-serif text-2xl mb-6">Ledger &harr; Payments &harr; Banking</h3>
+             <p class="text-sm text-[#1c1c1c]/70">Real-time automated evidence verification for global treasury operations.</p>
+           </div>
+        </div>
+        <p class="mt-16 text-center font-sans text-[#B4B4B4]">
+          ReconGraph is designed as a financial evidence intelligence layer, with GST reconciliation as the first use case.
+        </p>
+      </div>
+    </section>
+
+    <section id="faq" class="py-32 border-t border-[#e5e4de] relative z-20">
+      <div class="max-w-3xl mx-auto px-8">
+        <h2 class="font-serif text-5xl uppercase tracking-tighter mb-20 text-center">Frequently Asked Questions</h2>
+        <div class="space-y-12">
+          <div class="group">
+            <div class="font-mono text-[10px] uppercase tracking-widest text-[#3d7068] mb-4">Q: What is ReconGraph?</div>
+            <div class="font-sans text-xl">A: AI-assisted financial reconciliation and investigation platform.</div>
+          </div>
+          <div class="group">
+            <div class="font-mono text-[10px] uppercase tracking-widest text-[#3d7068] mb-4">Q: Is ReconGraph just an invoice matching tool?</div>
+            <div class="font-sans text-xl">A: No. Matching is only the first step; ReconGraph investigates, explains and prioritizes exceptions.</div>
+          </div>
+          <div class="group">
+            <div class="font-mono text-[10px] uppercase tracking-widest text-[#3d7068] mb-4">Q: How does AI help?</div>
+            <div class="font-sans text-xl">A: AI investigates discrepancies, explains evidence and assists prioritization through contextual reasoning.</div>
+          </div>
+          <div class="group">
+            <div class="font-mono text-[10px] uppercase tracking-widest text-[#3d7068] mb-4">Q: Can different companies have different priorities?</div>
+            <div class="font-sans text-xl">A: Yes. Each organization can have its own adaptive risk profile calibrated by human feedback.</div>
+          </div>
+          <div class="group">
+            <div class="font-mono text-[10px] uppercase tracking-widest text-[#3d7068] mb-4">Q: Does ReconGraph learn from human feedback?</div>
+            <div class="font-sans text-xl">A: Yes. Human decisions become organization-specific feedback that improves the relevance of future investigations.</div>
+          </div>
+          <div class="group">
+            <div class="font-mono text-[10px] uppercase tracking-widest text-[#3d7068] mb-4">Q: Is GST the only use case?</div>
+            <div class="font-sans text-xl">A: GST is the initial case; the architecture is designed for financial evidence across invoices, ledgers, payments and banking.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-48 border-t border-[#e5e4de] relative z-10">
+      <div class="max-w-7xl mx-auto px-8 text-center">
+        <h2 class="font-serif text-[6vw] uppercase leading-[1] tracking-tighter mb-12">
+          Stop chasing mismatches. <br> <span class="italic">Start understanding them.</span>
+        </h2>
+        <p class="font-sans text-xl text-[#1c1c1c]/70 mb-16">
+          Turn reconciliation into an intelligent investigation workflow.
+        </p>
+        <button id="final-cta-btn" class="shadow-drop bg-[#3d7068] text-white px-16 py-8 font-mono text-[12px] uppercase tracking-[0.4em] transition-all">
+          Start with ReconGraph &rarr;
+        </button>
+      </div>
+    </section>
+
+    <footer class="py-12 border-t border-[#e5e4de] bg-[#f7f6f2] relative z-20">
+      <div class="max-w-7xl mx-auto px-8 flex flex-col md:flex-row justify-between items-center gap-8">
+        <div class="font-mono text-[8px] uppercase tracking-[0.4em] text-[#B4B4B4]">
+          &copy; 2024 ReconGraph / Financial Evidence Systems
+        </div>
+        <div class="flex gap-8">
+          <a href="#" id="footer-social-tw" class="font-mono text-[8px] uppercase tracking-[0.4em] hover:text-[#3d7068]">Twitter</a>
+          <a href="#" id="footer-social-li" class="font-mono text-[8px] uppercase tracking-[0.4em] hover:text-[#3d7068]">LinkedIn</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    // Header Transition
+    window.addEventListener('scroll', () => {
+      const nav = document.getElementById('main-nav');
+      if (window.scrollY > 100) {
+        nav.classList.add('bg-white/90', 'backdrop-blur-md', 'border-b', 'border-[#e5e4de]', 'pt-4');
+        nav.classList.remove('pt-8');
+      } else {
+        nav.classList.remove('bg-white/90', 'backdrop-blur-md', 'border-b', 'border-[#e5e4de]', 'pt-4');
+        nav.classList.add('pt-8');
+      }
+    });
+
+    // Simple Fade In Observer
+    const observerOptions = {
+      threshold: 0.1
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, observerOptions);
+
+    document.querySelectorAll('section').forEach(section => {
+      section.classList.add('fade-in-section');
+      observer.observe(section);
+    });
+  </script>
+</body></html>

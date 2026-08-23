@@ -7,13 +7,37 @@ import { Button } from "@/components/ui/button";
 
 import UploadScreen from "@/components/UploadScreen";
 import DashboardScreen from "@/components/DashboardScreen";
-import { loadDemo } from "@/lib/api";
+import { loadDemo, uploadFiles, pollRun } from "@/lib/api";
 
 export default function AppPage() {
   const [result, setResult] = useState<ReconciliationResult | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleUpload = async (prFile: File, gstFile: File) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const initResponse = await uploadFiles(prFile, gstFile);
+      if (initResponse.run_id) {
+        setRunId(initResponse.run_id);
+        const finalResponse = await pollRun(initResponse.run_id);
+        if (finalResponse.status === "success" && finalResponse.result) {
+          setResult(finalResponse.result);
+        } else {
+          setError(`Run failed: ${finalResponse.message || "Unknown error"}`);
+        }
+      } else {
+        setError("Failed to queue the reconciliation job.");
+      }
+    } catch (err) {
+      console.error("Error uploading files:", err);
+      setError("Failed to upload and process files. Check the console for details.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleDemoLoad = async () => {
     setIsLoading(true);
@@ -79,7 +103,7 @@ export default function AppPage() {
       )}
 
       {!result ? (
-        <UploadScreen onDemoLoad={handleDemoLoad} isLoading={isLoading} />
+        <UploadScreen onDemoLoad={handleDemoLoad} onUpload={handleUpload} isLoading={isLoading} />
       ) : (
         <DashboardScreen result={result} runId={runId} />
       )}

@@ -52,7 +52,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router)
+# app.include_router(auth.router)
 app.include_router(copilot.router)
 
 request_id_var: ContextVar[str] = ContextVar("request_id", default="unknown")
@@ -263,7 +263,6 @@ async def reconcile(
     purchases: UploadFile = File(...),
     gsts: UploadFile = File(...),
     background_tasks: BackgroundTasks = None,
-    current_user: dict = Depends(require_auditor),
 ):
     MAX_CSV_SIZE = 10 * 1024 * 1024
 
@@ -295,7 +294,7 @@ async def reconcile(
 
 
 @app.get("/runs/{run_id}")
-async def get_run(run_id: str, current_user: dict = Depends(require_auditor)):
+async def get_run(run_id: str):
     run = store.get_run(run_id)
     if not run:
         if run_id in _runs_store:

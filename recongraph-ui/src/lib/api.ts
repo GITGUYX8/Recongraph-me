@@ -35,6 +35,37 @@ export async function loadDemo(): Promise<DemoResponse> {
   return request<DemoResponse>("/demo");
 }
 
+/** Upload actual PR and GST files to the engine. */
+export async function uploadFiles(purchases: File, gsts: File): Promise<DemoResponse> {
+  const formData = new FormData();
+  formData.append("purchases", purchases);
+  formData.append("gsts", gsts);
+
+  const res = await fetch(`${API_BASE}/reconcile`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`API /reconcile failed (${res.status}): ${body}`);
+  }
+  return res.json() as Promise<DemoResponse>;
+}
+
+/** Poll the run status until success or failure. */
+export async function pollRun(runId: string, maxAttempts = 600, intervalMs = 2000): Promise<DemoResponse> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const data = await request<DemoResponse>(`/runs/${runId}`);
+    if (data.status === "success" || data.status === "failed") {
+      return data;
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  throw new Error("Polling timed out");
+}
+
+
 /** Apply an IMS action to a packet within a run. */
 export async function applyImsAction(
   runId: string,

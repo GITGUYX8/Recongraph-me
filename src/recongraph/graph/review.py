@@ -8,6 +8,7 @@ from recongraph.graph.risk import RiskProfile, RiskEngine
 
 if TYPE_CHECKING:
     from recongraph.domain.document.layout import BoundingBox
+    from recongraph.graph.candidate import CandidateGraph
 
 
 @dataclass(frozen=True)
@@ -144,7 +145,7 @@ class ReviewPacketBuilder:
         self,
         decision: ReconciliationDecision,
         explanation: ExplanationArtifact | None,
-        graph: CandidateGraph,
+        graph: "CandidateGraph",
         ml_confidence: float | None = None,
         llm_explanation: str | None = None,
         llm_citation: str | None = None,
@@ -205,7 +206,7 @@ class ReviewPacketBuilder:
             risk_profile=risk_profile
         )
 
-    def build_single_leftover(self, urn: str, graph: CandidateGraph) -> ReviewPacket | None:
+    def build_single_leftover(self, urn: str, graph: "CandidateGraph") -> ReviewPacket | None:
         self._counter += 1
         packet_id = f"RP-{self._counter:05d}"
 

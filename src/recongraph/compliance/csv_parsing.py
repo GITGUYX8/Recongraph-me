@@ -7,6 +7,7 @@ without breaking the original minimal schema.
 
 import csv
 import io
+import uuid
 from datetime import date
 from decimal import Decimal
 from typing import Iterable
@@ -75,7 +76,7 @@ def parse_gst_rows(rows: Iterable[dict]) -> list[GSTRecord]:
 
 def _purchase_from_row(row: dict) -> PurchaseRecord:
     return PurchaseRecord(
-        record_id=_get(row, "record_id", "id") or "",
+        record_id=_get(row, "record_id", "id") or f"auto_{uuid.uuid4().hex[:8]}",
         vendor_name=_get(row, "vendor_name", "supplier_name"),
         reference=_get(row, "reference", "invoice_number", "bill_no"),
         amount=_decimal(row, "amount") or Decimal("0"),
@@ -101,7 +102,7 @@ def _purchase_from_row(row: dict) -> PurchaseRecord:
 
 def _gst_from_row(row: dict) -> GSTRecord:
     return GSTRecord(
-        record_id=_get(row, "record_id", "id") or "",
+        record_id=_get(row, "record_id", "id") or f"auto_{uuid.uuid4().hex[:8]}",
         vendor_name=_get(row, "vendor_name", "supplier_name"),
         reference=_get(row, "reference", "invoice_number", "bill_no"),
         amount=_decimal(row, "amount") or Decimal("0"),

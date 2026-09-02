@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Depends, Request
+from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Depends, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
@@ -36,7 +36,7 @@ from recongraph.compliance.integrations.nic import StubNicClient
 
 # App components (Phase 8+)
 from . import auth, copilot
-from .auth import create_access_token, require_auditor, require_admin
+from .auth import authenticate_demo_user, create_access_token, register_temporary_user, require_auditor, require_admin
 from .store import Store
 
 logger = logging.getLogger("recongraph-api")
@@ -160,6 +160,11 @@ class FeedbackRequest(BaseModel):
     payload: dict = {}
 
 
+class SignupRequest(BaseModel):
+    username: str
+    password: str
+
+
 class RunResponse(BaseModel):
     run_id: str
     status: str
@@ -201,12 +206,11 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 @app.post("/token")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    if form_data.username == "admin" and form_data.password == "admin":
-        role = "admin"
-    elif form_data.username == "auditor" and form_data.password == "auditor":
-        role = "auditor"
-    else:
-        raise HTTPException(status_code=401, detail="Incorrect username or password")
+    try:
+        role = authenticate_demo_user(form_data.username, form_data.password)
+    except RuntimeError as exc:
+        logger.error("Authentication is unavailable: %s", exc)
+        raise HTTPException(status_code=503, detail="Authentication is not configured") from exc
 
     access_token_expires = timedelta(minutes=60 * 24)
     access_token = create_access_token(
@@ -214,6 +218,23 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         expires_delta=access_token_expires,
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@app.post("/signup", status_code=status.HTTP_201_CREATED)
+async def signup(request: SignupRequest):
+    username = request.username.strip()
+    if len(username) < 3 or len(username) > 64:
+        raise HTTPException(status_code=400, detail="Username must be between 3 and 64 characters")
+    if len(request.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    try:
+        register_temporary_user(username, request.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        logger.error("Signup is unavailable: %s", exc)
+        raise HTTPException(status_code=503, detail="Authentication is not configured") from exc
+    return {"status": "created", "message": "Account created. You can now sign in."}
 
 
 @app.get("/health")

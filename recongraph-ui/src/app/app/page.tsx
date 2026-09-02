@@ -1,19 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ReconciliationResult } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 
 import UploadScreen from "@/components/UploadScreen";
 import DashboardScreen from "@/components/DashboardScreen";
-import { loadDemo, uploadFiles, pollRun } from "@/lib/api";
+import AuthScreen from "@/components/AuthScreen";
+import { ApiAuthError, clearAccessToken, getAccessToken, loadDemo, uploadFiles, pollRun } from "@/lib/api";
 
 export default function AppPage() {
   const [result, setResult] = useState<ReconciliationResult | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    setIsAuthenticated(Boolean(getAccessToken()));
+
+    const handleAuthRequired = () => {
+      setIsAuthenticated(false);
+      setResult(null);
+      setRunId(null);
+      setError("Your session expired. Please sign in again.");
+    };
+    window.addEventListener("recongraph:auth-required", handleAuthRequired);
+    return () => window.removeEventListener("recongraph:auth-required", handleAuthRequired);
+  }, []);
 
   const handleUpload = async (prFile: File, gstFile: File) => {
     setIsLoading(true);
@@ -33,7 +48,7 @@ export default function AppPage() {
       }
     } catch (err) {
       console.error("Error uploading files:", err);
-      setError("Failed to upload and process files. Check the console for details.");
+      setError(err instanceof ApiAuthError ? "Your session expired. Please sign in again." : "Failed to upload and process files. Check the console for details.");
     } finally {
       setIsLoading(false);
     }
@@ -52,6 +67,7 @@ export default function AppPage() {
           return;
         }
       } catch (e) {
+        if (e instanceof ApiAuthError) throw e;
         console.warn("Backend /demo failed, falling back to static JSON", e);
       }
 
@@ -63,10 +79,25 @@ export default function AppPage() {
       setResult(data);
     } catch (err) {
       console.error("Error loading demo:", err);
-      setError("Failed to load the demo dataset. Check the console for details.");
+      setError(err instanceof ApiAuthError ? "Your session expired. Please sign in again." : "Failed to load the demo dataset. Check the console for details.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  if (isAuthenticated === null) {
+    return <main className="min-h-screen" aria-busy="true" />;
+  }
+
+  if (!isAuthenticated) {
+    return <AuthScreen onAuthenticated={() => setIsAuthenticated(true)} />;
+  }
+
+  const logout = () => {
+    clearAccessToken();
+    setIsAuthenticated(false);
+    setResult(null);
+    setRunId(null);
   };
 
   const reset = () => {
@@ -86,11 +117,16 @@ export default function AppPage() {
           </p>
         </Link>
 
-        {result && (
-          <Button variant="outline" size="sm" onClick={reset}>
-            Start New Run
-          </Button>
-        )}
+          <div className="flex items-center gap-2">
+            {result && (
+              <Button variant="outline" size="sm" onClick={reset}>
+                Start New Run
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={logout}>
+              Sign out
+            </Button>
+          </div>
       </header>
 
       {error && (

@@ -31,8 +31,9 @@ The UI includes a static demo fallback so you can instantly view the adversarial
 To process new datasets, you may start the FastAPI backend:
 ```bash
 # Terminal 2: FastAPI Backend
+pip install -e .
 pip install -r recongraph-api/requirements.txt
-python -m uvicorn recongraph-api.app.main:app --reload
+python -m uvicorn recongraph-api.app.main:app --reload --env-file recongraph-api/.env
 ```
 
 ## Documentation

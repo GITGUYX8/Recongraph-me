@@ -3,6 +3,66 @@ import type { ImsAction, ReconciliationResult } from "./types";
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+const AUTH_TOKEN_KEY = "recongraph_access_token";
+
+export class ApiAuthError extends Error {
+  constructor() {
+    super("Authentication required");
+    this.name = "ApiAuthError";
+  }
+}
+
+export function getAccessToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.sessionStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+export function setAccessToken(token: string): void {
+  window.sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+export function clearAccessToken(): void {
+  if (typeof window !== "undefined") {
+    window.sessionStorage.removeItem(AUTH_TOKEN_KEY);
+  }
+}
+
+export async function login(username: string, password: string): Promise<void> {
+  const body = new URLSearchParams({ username, password });
+  const res = await fetch(`${API_BASE}/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    throw new Error(detail?.detail ?? "Unable to sign in");
+  }
+
+  const data = (await res.json()) as { access_token?: string };
+  if (!data.access_token) throw new Error("Authentication response was invalid");
+  setAccessToken(data.access_token);
+}
+
+export async function signup(username: string, password: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    throw new Error(detail?.detail ?? "Unable to create account");
+  }
+}
+
+function authHeaders(): HeadersInit {
+  const token = getAccessToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export interface DemoResponse {
   run_id: string;
   status: string;
@@ -21,8 +81,17 @@ export interface AppliedAction {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+      ...(init?.headers ?? {}),
+    },
   });
+  if (res.status === 401) {
+    clearAccessToken();
+    window.dispatchEvent(new Event("recongraph:auth-required"));
+    throw new ApiAuthError();
+  }
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(`API ${path} failed (${res.status}): ${body}`);
@@ -43,8 +112,15 @@ export async function uploadFiles(purchases: File, gsts: File): Promise<DemoResp
 
   const res = await fetch(`${API_BASE}/reconcile`, {
     method: "POST",
+    headers: authHeaders(),
     body: formData,
   });
+
+  if (res.status === 401) {
+    clearAccessToken();
+    window.dispatchEvent(new Event("recongraph:auth-required"));
+    throw new ApiAuthError();
+  }
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -95,7 +171,13 @@ export async function exportReport(
 ): Promise<void> {
   const res = await fetch(
     `${API_BASE}/runs/${runId}/export?report=${report}&format=${format}`,
+    { headers: authHeaders() },
   );
+  if (res.status === 401) {
+    clearAccessToken();
+    window.dispatchEvent(new Event("recongraph:auth-required"));
+    throw new ApiAuthError();
+  }
   if (!res.ok) {
     throw new Error(`Export failed (${res.status})`);
   }

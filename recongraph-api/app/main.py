@@ -35,7 +35,7 @@ from recongraph.compliance.integrations.models import InwardSupplyBatch, InwardS
 from recongraph.compliance.integrations.nic import StubNicClient
 
 # App components (Phase 8+)
-from . import auth, copilot
+from . import auth
 from .auth import authenticate_demo_user, create_access_token, register_temporary_user, require_auditor, require_admin
 from .store import Store
 
@@ -53,7 +53,6 @@ app.add_middleware(
 )
 
 # app.include_router(auth.router)
-app.include_router(copilot.router)
 
 request_id_var: ContextVar[str] = ContextVar("request_id", default="unknown")
 
@@ -284,6 +283,7 @@ async def reconcile(
     purchases: UploadFile = File(...),
     gsts: UploadFile = File(...),
     background_tasks: BackgroundTasks = None,
+    current_user: dict = Depends(require_auditor),
 ):
     MAX_CSV_SIZE = 10 * 1024 * 1024
 

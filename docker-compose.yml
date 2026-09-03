@@ -38,10 +38,12 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./recongraph-api:/app
+      - uploads_data:/app/data/uploads
     ports:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/recongraph
+      - RECONGRAPH_UPLOAD_DIR=/app/data/uploads
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
@@ -53,11 +55,13 @@ services:
     build: 
       context: ./recongraph-api
       dockerfile: Dockerfile.api
-    command: celery -A app.worker.celery worker --loglevel=info
+    command: python -m app.worker
     volumes:
       - ./recongraph-api:/app
+      - uploads_data:/app/data/uploads
     environment:
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/recongraph
+      - RECONGRAPH_UPLOAD_DIR=/app/data/uploads
       - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
@@ -84,3 +88,4 @@ volumes:
   postgres_data:
   redis_data:
   qdrant_data:
+  uploads_data:

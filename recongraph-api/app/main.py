@@ -1,29 +1,19 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Depends, Request, status
+from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 from contextvars import ContextVar
-import uuid
+from pathlib import Path
+import os
 import io
+import uuid
 import csv
 import json
 import logging
-import sqlite3
-from decimal import Decimal
-from datetime import date, datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional
 
-from recongraph.config import ReconGraphConfig
 from recongraph.engine import ReconGraphEngine
-from recongraph.plugins.core_providers import (
-    FinancialEvidenceProvider, TemporalEvidenceProvider, TaxEvidenceProvider,
-    VendorEvidenceProvider, ReferenceEvidenceProvider,
-)
-from recongraph.domain.vendor.context import VendorIdentityContext
-from recongraph.matching.reference_evidence import (
-    build_reference_corpus_profile, ReferenceEvidenceContext, ReferenceEvidencePolicy,
-)
-
 from recongraph.compliance.csv_parsing import parse_purchase_csv, parse_gst_csv
 from recongraph.compliance.ims import ImsAction, apply_action
 from recongraph.compliance.itc_claim import set_itc_claim_period_on_match
@@ -37,7 +27,10 @@ from recongraph.compliance.integrations.nic import StubNicClient
 # App components (Phase 8+)
 from . import auth
 from .auth import authenticate_demo_user, create_access_token, register_temporary_user, require_auditor, require_admin
-from .store import Store
+from .database import AsyncSessionLocal, engine
+from . import repository
+from . import models  # noqa: F401  (registers models on Base.metadata)
+from .processing import run_engine
 
 logger = logging.getLogger("recongraph-api")
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - [%(request_id)s] - %(message)s')
@@ -75,68 +68,16 @@ async def request_id_middleware(request: Request, call_next):
     return response
 
 
-# Persistence: SQLite store (compliance port) + legacy in-memory store (Phase 8).
-store = Store()
-_runs_store: Dict[str, dict] = {}
+# Persistence: single SQLAlchemy/async store (see models.py, repository.py).
+UPLOAD_ROOT = Path(os.getenv("RECONGRAPH_UPLOAD_DIR", "./data/uploads"))
 _gst_portal = StubGSTPortalClient()
 _nic = StubNicClient()
 
 
-# Setup SQLite for HITL Feedback (Phase 8)
-def init_db():
-    conn = sqlite3.connect('hitl_feedback.db')
-    c = conn.cursor()
-
-    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='feedback_v2'")
-    v2_exists = c.fetchone() is not None
-
-    if not v2_exists:
-        c.execute('''
-            CREATE TABLE feedback_v2
-            (review_id INTEGER PRIMARY KEY AUTOINCREMENT,
-             packet_id TEXT,
-             purchase_record_id TEXT,
-             gst_record_id TEXT,
-             deterministic_decision TEXT,
-             deterministic_score REAL,
-             deterministic_coverage REAL,
-             ml_score REAL,
-             calibrated_ml_probability REAL,
-             graph_features TEXT,
-             evidence_features TEXT,
-             final_human_decision TEXT,
-             reviewer_action TEXT,
-             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-             engine_version TEXT,
-             model_version TEXT,
-             config_hash TEXT,
-             explanation_version TEXT,
-             rag_context_identifiers TEXT,
-             legacy_payload TEXT)
-        ''')
-        c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='feedback'")
-        v1_exists = c.fetchone() is not None
-        if v1_exists:
-            c.execute("SELECT packet_id, action, timestamp, payload FROM feedback")
-            rows = c.fetchall()
-            for row in rows:
-                packet_id, action, timestamp, payload = row
-                try:
-                    payload_dict = json.loads(payload)
-                except Exception:
-                    payload_dict = {}
-                c.execute('''
-                    INSERT INTO feedback_v2
-                    (packet_id, reviewer_action, timestamp, legacy_payload)
-                    VALUES (?, ?, ?, ?)
-                ''', (packet_id, action, timestamp, payload))
-            c.execute("ALTER TABLE feedback RENAME TO feedback_v1_backup")
-
-    conn.commit()
-    conn.close()
-
-
-init_db()
+@app.on_event("startup")
+async def _startup_schema() -> None:
+    async with engine.begin() as conn:
+        await conn.run_sync(models.Base.metadata.create_all)
 
 
 class FeedbackRequest(BaseModel):
@@ -179,25 +120,6 @@ class ActionRequest(BaseModel):
 
 class ActionBatchRequest(BaseModel):
     packets: list[ActionRequest]
-
-
-def _build_providers(purchases, gsts):
-    corpus = build_reference_corpus_profile([r.reference for r in purchases + gsts])
-    ref_ctx = ReferenceEvidenceContext(corpus, ReferenceEvidencePolicy())
-    vendor_ctx = VendorIdentityContext(corpus_profile=None)
-    return [
-        FinancialEvidenceProvider(),
-        TemporalEvidenceProvider(),
-        TaxEvidenceProvider(),
-        VendorEvidenceProvider(vendor_ctx),
-        ReferenceEvidenceProvider(ref_ctx),
-    ]
-
-
-def _run_engine(purchases, gsts):
-    providers = _build_providers(purchases, gsts)
-    engine = ReconGraphEngine(config=ReconGraphConfig(), providers=providers)
-    return engine.reconcile(purchases, gsts)
 
 
 from fastapi.security import OAuth2PasswordRequestForm
@@ -251,150 +173,144 @@ async def version_check():
     return {"version": ReconGraphEngine.VERSION}
 
 
-def _run_reconciliation_task(run_id: str, p_content: str, g_content: str):
-    try:
-        _runs_store[run_id] = {"status": "processing", "message": "Parsing CSV and generating graphs"}
-        P = parse_purchase_csv(p_content)
-        G = parse_gst_csv(g_content)
-
-        if not P or not G:
-            _runs_store[run_id] = {"status": "failed", "message": "One or both CSV files were empty or unparseable."}
-            return
-
-        _runs_store[run_id] = {"status": "processing", "message": "Engine running hypothesis search"}
-        result = _run_engine(P, G)
-
-        result_dict = result.to_dict()
-        _runs_store[run_id] = {"status": "success", "result": result_dict}
-        store.save_run(
-            run_id=run_id,
-            created_at=datetime.now(timezone.utc).isoformat(),
-            status="success",
-            result=result_dict,
-            engine_version=result.engine_version,
-        )
-    except Exception as e:
-        logger.error(f"Reconciliation task {run_id} failed: {e}")
-        _runs_store[run_id] = {"status": "failed", "message": str(e)}
+async def _persist_upload(
+    session, run_id: str, tenant_id: str, kind: str, upload: UploadFile, content: bytes
+) -> str:
+    relative = str(Path(tenant_id) / run_id / f"{kind}{Path(upload.filename).suffix}")
+    abs_path = UPLOAD_ROOT / relative
+    abs_path.parent.mkdir(parents=True, exist_ok=True)
+    abs_path.write_bytes(content)
+    await repository.create_upload(
+        session, run_id, tenant_id, kind, upload.filename, len(content), relative
+    )
+    return relative
 
 
 @app.post("/reconcile", response_model=RunResponse)
 async def reconcile(
     purchases: UploadFile = File(...),
     gsts: UploadFile = File(...),
-    background_tasks: BackgroundTasks = None,
     current_user: dict = Depends(require_auditor),
 ):
     MAX_CSV_SIZE = 10 * 1024 * 1024
+    tenant_id = current_user.get("tenant_id", "tenant-001")
 
+    p_content_bytes = await purchases.read()
+    if len(p_content_bytes) > MAX_CSV_SIZE:
+        raise HTTPException(status_code=413, detail="Purchases CSV exceeds 10MB limit.")
+    g_content_bytes = await gsts.read()
+    if len(g_content_bytes) > MAX_CSV_SIZE:
+        raise HTTPException(status_code=413, detail="GSTs CSV exceeds 10MB limit.")
+
+    run_id = str(uuid.uuid4())
     try:
-        logger.info(f"Received reconciliation request. Purchases: {purchases.filename}, GSTs: {gsts.filename}")
-        p_content_bytes = await purchases.read()
-        if len(p_content_bytes) > MAX_CSV_SIZE:
-            raise HTTPException(status_code=413, detail="Purchases CSV exceeds 10MB limit.")
-
-        g_content_bytes = await gsts.read()
-        if len(g_content_bytes) > MAX_CSV_SIZE:
-            raise HTTPException(status_code=413, detail="GSTs CSV exceeds 10MB limit.")
-
-        p_content = p_content_bytes.decode("utf-8")
-        g_content = g_content_bytes.decode("utf-8")
-
-        run_id = str(uuid.uuid4())
-        _runs_store[run_id] = {"status": "queued", "message": "Job queued for background processing"}
-
-        if background_tasks:
-            background_tasks.add_task(_run_reconciliation_task, run_id, p_content, g_content)
-        else:
-            _run_reconciliation_task(run_id, p_content, g_content)
-
-        return RunResponse(run_id=run_id, status="queued", message="Job dispatched successfully")
-
+        async with AsyncSessionLocal() as session:
+            await repository.create_run(
+                session, run_id, tenant_id, current_user.get("username", "unknown")
+            )
+            await _persist_upload(session, run_id, tenant_id, "purchases", purchases, p_content_bytes)
+            await _persist_upload(session, run_id, tenant_id, "gsts", gsts, g_content_bytes)
+            await repository.create_job(session, run_id, tenant_id)
     except Exception as e:
+        logger.exception("Failed to enqueue reconciliation run %s", run_id)
         raise HTTPException(status_code=500, detail=str(e))
+
+    return RunResponse(run_id=run_id, status="queued", message="Job dispatched successfully")
 
 
 @app.get("/runs/{run_id}")
-async def get_run(run_id: str):
-    run = store.get_run(run_id)
-    if not run:
-        if run_id in _runs_store:
-            return _runs_store[run_id]
-        raise HTTPException(status_code=404, detail="Run not found")
-    run["actions"] = store.get_run_actions(run_id)
+async def get_run(run_id: str, current_user: dict = Depends(require_auditor)):
+    tenant_id = current_user.get("tenant_id", "tenant-001")
+    async with AsyncSessionLocal() as session:
+        run = await repository.get_run_for_tenant(session, run_id, tenant_id)
+        if not run:
+            raise HTTPException(status_code=404, detail="Run not found")
+        run["actions"] = await repository.get_run_actions(session, run_id)
+        job = await repository.get_job_for_run(session, run_id)
+    if job:
+        run["job"] = job
     return run
 
 
 @app.get("/runs")
 async def list_runs(current_user: dict = Depends(require_auditor)):
-    return store.list_runs()
+    tenant_id = current_user.get("tenant_id", "tenant-001")
+    async with AsyncSessionLocal() as session:
+        return await repository.list_runs(session, tenant_id)
 
 
 @app.post("/runs/{run_id}/actions")
 async def apply_actions(run_id: str, request: ActionBatchRequest, current_user: dict = Depends(require_auditor)):
-    run = store.get_run(run_id)
-    if not run:
-        raise HTTPException(status_code=404, detail="Run not found")
+    tenant_id = current_user.get("tenant_id", "tenant-001")
+    async with AsyncSessionLocal() as session:
+        run = await repository.get_run_for_tenant(session, run_id, tenant_id)
+        if not run:
+            raise HTTPException(status_code=404, detail="Run not found")
 
-    results = []
-    for item in request.packets:
-        try:
-            action = ImsAction(item.action)
-        except ValueError:
-            raise HTTPException(status_code=400, detail=f"Unknown action '{item.action}'")
+        results = []
+        for item in request.packets:
+            try:
+                action = ImsAction(item.action)
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"Unknown action '{item.action}'")
 
-        decision = apply_action(
-            packet_id=item.packet_id,
-            action=action,
-            reviewer_id=item.reviewer_id or "system",
-            comments=item.comments or "",
-        )
-        itc = set_itc_claim_period_on_match(
-            match_date=datetime.now(timezone.utc).date(),
-            available=action == ImsAction.ACCEPT,
-        )
-        store.apply_action(run_id, item.packet_id, {
-            "action": decision.action.value,
-            "status": decision.status,
-            "itc_availability": itc.availability.value,
-            "itc_claim_period": itc.claim_period,
-            "reason_itc_unavailability": itc.reason_unavailable,
-            "reviewer_id": decision.reviewer_id,
-            "comments": decision.comments,
-            "updated_at": decision.updated_at,
-        })
-        results.append({
-            "packet_id": item.packet_id,
-            "action": decision.action.value,
-            "status": decision.status,
-            **itc.to_dict(),
-        })
+            decision = apply_action(
+                packet_id=item.packet_id,
+                action=action,
+                reviewer_id=item.reviewer_id or "system",
+                comments=item.comments or "",
+            )
+            itc = set_itc_claim_period_on_match(
+                match_date=datetime.now(timezone.utc).date(),
+                available=action == ImsAction.ACCEPT,
+            )
+            await repository.apply_packet_action(session, run_id, tenant_id, item.packet_id, {
+                "action": decision.action.value,
+                "status": decision.status,
+                "itc_availability": itc.availability.value,
+                "itc_claim_period": itc.claim_period,
+                "reason_itc_unavailability": itc.reason_unavailable,
+                "reviewer_id": decision.reviewer_id,
+                "comments": decision.comments,
+            })
+            results.append({
+                "packet_id": item.packet_id,
+                "action": decision.action.value,
+                "status": decision.status,
+                **itc.to_dict(),
+            })
 
     return {"run_id": run_id, "applied": results}
 
 
 @app.get("/runs/{run_id}/packets/{packet_id}")
 async def get_packet(run_id: str, packet_id: str, current_user: dict = Depends(require_auditor)):
-    run = store.get_run(run_id)
-    if not run:
-        raise HTTPException(status_code=404, detail="Run not found")
-    packet = next(
-        (p for p in run["result"].get("review_packets", []) if p.get("packet_id") == packet_id),
-        None,
-    )
-    if not packet:
-        raise HTTPException(status_code=404, detail="Packet not found")
-    packet["ims"] = store.get_packet_action(run_id, packet_id)
+    tenant_id = current_user.get("tenant_id", "tenant-001")
+    async with AsyncSessionLocal() as session:
+        run = await repository.get_run_for_tenant(session, run_id, tenant_id)
+        if not run:
+            raise HTTPException(status_code=404, detail="Run not found")
+        packet = next(
+            (p for p in (run["result"] or {}).get("review_packets", []) if p.get("packet_id") == packet_id),
+            None,
+        )
+        if not packet:
+            raise HTTPException(status_code=404, detail="Packet not found")
+        packet["ims"] = await repository.get_packet_action(session, run_id, packet_id)
     return packet
 
 
 @app.get("/runs/{run_id}/export")
 async def export_run(run_id: str, report: str = "match_summary", format: str = "csv", current_user: dict = Depends(require_auditor)):
-    run = store.get_run(run_id)
-    if not run:
-        raise HTTPException(status_code=404, detail="Run not found")
+    tenant_id = current_user.get("tenant_id", "tenant-001")
+    async with AsyncSessionLocal() as session:
+        run = await repository.get_run_for_tenant(session, run_id, tenant_id)
+        if not run:
+            raise HTTPException(status_code=404, detail="Run not found")
+        result = run.get("result")
+
     try:
-        payload = compliance_reports.export_report(run["result"], report, format)
+        payload = compliance_reports.export_report(result, report, format)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
@@ -406,14 +322,14 @@ async def export_run(run_id: str, report: str = "match_summary", format: str = "
 
 @app.get("/export/{run_id}")
 async def export_run_csv(run_id: str, current_user: dict = Depends(require_auditor)):
-    if run_id not in _runs_store:
-        raise HTTPException(status_code=404, detail="Run not found")
-
-    run_data = _runs_store[run_id]
-    if run_data.get("status") != "success":
-        raise HTTPException(status_code=400, detail="Run not completed yet")
-
-    result = run_data.get("result", {})
+    tenant_id = current_user.get("tenant_id", "tenant-001")
+    async with AsyncSessionLocal() as session:
+        run = await repository.get_run_for_tenant(session, run_id, tenant_id)
+        if not run:
+            raise HTTPException(status_code=404, detail="Run not found")
+        if run.get("status") != "success":
+            raise HTTPException(status_code=400, detail="Run not completed yet")
+        result = run.get("result") or {}
     packets = result.get("packets", [])
 
     output = io.StringIO()
@@ -466,40 +382,30 @@ async def export_run_csv(run_id: str, current_user: dict = Depends(require_audit
 
 @app.post("/feedback")
 async def submit_feedback(feedback: FeedbackRequest, current_user: dict = Depends(require_auditor)):
+    tenant_id = current_user.get("tenant_id", "tenant-001")
     try:
-        conn = sqlite3.connect('hitl_feedback.db')
-        c = conn.cursor()
-        c.execute(
-            """INSERT INTO feedback_v2
-               (packet_id, purchase_record_id, gst_record_id, deterministic_decision,
-                deterministic_score, deterministic_coverage, ml_score, calibrated_ml_probability,
-                graph_features, evidence_features, final_human_decision, reviewer_action,
-                engine_version, model_version, config_hash, explanation_version,
-                rag_context_identifiers, legacy_payload)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                feedback.packet_id,
-                feedback.purchase_record_id,
-                feedback.gst_record_id,
-                feedback.deterministic_decision,
-                feedback.deterministic_score,
-                feedback.deterministic_coverage,
-                feedback.ml_score,
-                feedback.calibrated_ml_probability,
-                json.dumps(feedback.graph_features),
-                json.dumps(feedback.evidence_features),
-                feedback.action,
-                feedback.action,
-                feedback.engine_version,
-                feedback.model_version,
-                feedback.config_hash,
-                feedback.explanation_version,
-                json.dumps(feedback.rag_context_identifiers),
-                json.dumps(feedback.payload),
-            ),
-        )
-        conn.commit()
-        conn.close()
+        async with AsyncSessionLocal() as session:
+            await repository.save_feedback(session, {
+                "tenant_id": tenant_id,
+                "packet_id": feedback.packet_id,
+                "purchase_record_id": feedback.purchase_record_id,
+                "gst_record_id": feedback.gst_record_id,
+                "deterministic_decision": feedback.deterministic_decision,
+                "deterministic_score": feedback.deterministic_score,
+                "deterministic_coverage": feedback.deterministic_coverage,
+                "ml_score": feedback.ml_score,
+                "calibrated_ml_probability": feedback.calibrated_ml_probability,
+                "graph_features": json.dumps(feedback.graph_features),
+                "evidence_features": json.dumps(feedback.evidence_features),
+                "final_human_decision": feedback.action,
+                "reviewer_action": feedback.action,
+                "engine_version": feedback.engine_version,
+                "model_version": feedback.model_version,
+                "config_hash": feedback.config_hash,
+                "explanation_version": feedback.explanation_version,
+                "rag_context_identifiers": json.dumps(feedback.rag_context_identifiers),
+                "legacy_payload": json.dumps(feedback.payload),
+            })
         return {"status": "success"}
     except Exception as e:
         import traceback
@@ -563,16 +469,17 @@ async def get_demo():
         with open(g_csv, "r") as f:
             G = parse_gst_csv(f.read())
 
-        result = _run_engine(P, G).to_dict()
+        result = run_engine(P, G).to_dict()
 
     run_id = str(uuid.uuid4())
-    store.save_run(
-        run_id=run_id,
-        created_at=datetime.now(timezone.utc).isoformat(),
-        status="success",
-        result=result,
-        engine_version=result.get("engine_version"),
-    )
+    async with AsyncSessionLocal() as session:
+        await repository.create_run(session, run_id, "tenant-001", "demo", status="success")
+        await repository.save_run_result(
+            session,
+            run_id,
+            result_json=json.dumps(result),
+            engine_version=result.get("engine_version"),
+        )
     return {"run_id": run_id, "status": "success", "result": result}
 
 

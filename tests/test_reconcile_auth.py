@@ -9,7 +9,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "recongraph-api"))
 from app.main import app
 from app import auth
 
-client = TestClient(app)
+
+@pytest.fixture(scope="module")
+def client():
+    with TestClient(app) as c:
+        yield c
 
 
 @pytest.fixture(autouse=True)
@@ -26,19 +30,19 @@ def reset_auth_state(monkeypatch):
     auth.clear_temporary_users()
 
 
-def _login(username: str, password: str) -> str:
+def _login(client, username: str, password: str) -> str:
     res = client.post("/token", data={"username": username, "password": password})
     assert res.status_code == 200
     return res.json()["access_token"]
 
 
-def test_reconcile_requires_authentication():
+def test_reconcile_requires_authentication(client):
     res = client.post("/reconcile", files={"purchases": ("p.csv", b"a", "text/csv"), "gsts": ("g.csv", b"b", "text/csv")})
     assert res.status_code == 401
 
 
-def test_reconcile_allows_authenticated_auditor():
-    token = _login("demo-auditor", "auditor-password")
+def test_reconcile_allows_authenticated_auditor(client):
+    token = _login(client, "demo-auditor", "auditor-password")
     res = client.post(
         "/reconcile",
         headers={"Authorization": f"Bearer {token}"},
@@ -48,8 +52,8 @@ def test_reconcile_allows_authenticated_auditor():
     assert res.json()["run_id"]
 
 
-def test_reconcile_allows_authenticated_admin():
-    token = _login("demo-admin", "correct-password")
+def test_reconcile_allows_authenticated_admin(client):
+    token = _login(client, "demo-admin", "correct-password")
     res = client.post(
         "/reconcile",
         headers={"Authorization": f"Bearer {token}"},
@@ -58,6 +62,6 @@ def test_reconcile_allows_authenticated_admin():
     assert res.status_code == 200
 
 
-def test_demo_remains_public_without_token():
+def test_demo_remains_public_without_token(client):
     res = client.get("/demo")
     assert res.status_code == 200

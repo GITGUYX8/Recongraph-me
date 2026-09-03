@@ -1,47 +1,49 @@
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from sqlalchemy.orm import declarative_base, declared_attr
-from sqlalchemy import Column, String, Integer, DateTime, Float
-import datetime
+"""Async SQLAlchemy engine and session factory for ReconGraph.
+
+Production uses PostgreSQL (``postgresql+asyncpg://``). Local development and
+tests use SQLite via ``sqlite+aiosqlite://`` so the full ORM/repository path
+works without a database server.
+
+Configure via ``DATABASE_URL``. All schema changes go through Alembic.
+"""
+
 import os
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./hitl_feedback.db")
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+from sqlalchemy.orm import DeclarativeBase, declared_attr
+from sqlalchemy.pool import NullPool
 
-engine = create_async_engine(DATABASE_URL, echo=False)
-AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-class Base:
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "sqlite+aiosqlite:///./data/recongraph.db",
+)
+
+# A single module-level async engine cannot safely share pooled connections
+# across independent event loops (e.g. multiple ``asyncio.run`` calls in tests
+# or a test client's portal). SQLite tests use a fresh connection per checkout
+# via NullPool; Postgres keeps the default async pool for production.
+_use_null_pool = DATABASE_URL.startswith("sqlite")
+
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=False,
+    poolclass=NullPool if _use_null_pool else None,
+)
+AsyncSessionLocal = async_sessionmaker(
+    engine, class_=AsyncSession, expire_on_commit=False
+)
+
+
+class Base(DeclarativeBase):
     @declared_attr
     def __tablename__(cls) -> str:
         return cls.__name__.lower()
-        
-    tenant_id = Column(String, index=True, nullable=False, default="default")
 
-Base = declarative_base(cls=Base)
-
-# Example Table for phase 8
-class Feedback(Base):
-    __tablename__ = "feedback_v2"
-    
-    review_id = Column(Integer, primary_key=True, index=True)
-    packet_id = Column(String, index=True)
-    purchase_record_id = Column(String)
-    gst_record_id = Column(String)
-    deterministic_decision = Column(String)
-    deterministic_score = Column(Float)
-    deterministic_coverage = Column(Float)
-    ml_score = Column(Float)
-    calibrated_ml_probability = Column(Float)
-    graph_features = Column(String)
-    evidence_features = Column(String)
-    final_human_decision = Column(String)
-    reviewer_action = Column(String)
-    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
-    engine_version = Column(String)
-    model_version = Column(String)
-    config_hash = Column(String)
-    explanation_version = Column(String)
-    rag_context_identifiers = Column(String)
-    legacy_payload = Column(String)
 
 async def get_db():
     async with AsyncSessionLocal() as session:

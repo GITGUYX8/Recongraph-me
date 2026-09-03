@@ -42,12 +42,15 @@ services:
       dockerfile: Dockerfile.api
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
     environment:
-      - DATABASE_URL=postgresql://recongraph:${POSTGRES_PASSWORD:-recongraph_secret}@postgres:5432/recongraph_prod
+      - DATABASE_URL=postgresql+asyncpg://recongraph:${POSTGRES_PASSWORD:-recongraph_secret}@postgres:5432/recongraph_prod
       - REDIS_URL=redis://:${REDIS_PASSWORD:-recongraph_redis_secret}@redis:6379/0
       - QDRANT_URL=http://qdrant:6333
       - ENVIRONMENT=production
       - JWT_SECRET=${JWT_SECRET}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - RECONGRAPH_UPLOAD_DIR=/app/data/uploads
+    volumes:
+      - uploads_data:/app/data/uploads
     ports:
       - "8000:8000"
     depends_on:
@@ -63,11 +66,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
-    command: celery -A recongraph_api.worker worker --loglevel=info -c 4
+    command: python -m app.worker
     environment:
-      - DATABASE_URL=postgresql://recongraph:${POSTGRES_PASSWORD:-recongraph_secret}@postgres:5432/recongraph_prod
+      - DATABASE_URL=postgresql+asyncpg://recongraph:${POSTGRES_PASSWORD:-recongraph_secret}@postgres:5432/recongraph_prod
       - REDIS_URL=redis://:${REDIS_PASSWORD:-recongraph_redis_secret}@redis:6379/0
+      - RECONGRAPH_UPLOAD_DIR=/app/data/uploads
       - ENVIRONMENT=production
+    volumes:
+      - uploads_data:/app/data/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -91,3 +97,4 @@ volumes:
   postgres_data:
   redis_data:
   qdrant_data:
+  uploads_data:
